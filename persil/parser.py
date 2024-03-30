@@ -34,7 +34,7 @@ class Parser(Generic[Input, Output]):
     def __call__(self, stream: Input, index: int) -> Result[Output]:
         return self.wrapped_fn(stream, index)
 
-    def then(self, other: "Parser[Any, T]") -> "Parser[Input, T]":
+    def then(self, other: "Parser[In, T]") -> "Parser[Input, T]":
         """
         Returns a parser which, if the initial parser succeeds, will
         continue parsing with `other`. This will produce the
@@ -349,14 +349,14 @@ class Parser(Generic[Input, Output]):
             res1 = self(stream, index)
 
             if isinstance(res1, Ok):
-                return Ok(res1.value, index)
+                return Ok(res1.value, res1.index)
 
             res2 = other(stream, index)
 
             if isinstance(res2, Err):
                 return res2
 
-            return Ok(res2.value, index)
+            return Ok(res2.value, res2.index)
 
         return alt_parser
 
