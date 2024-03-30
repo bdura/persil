@@ -1,10 +1,11 @@
 from functools import wraps
-from typing import Any, Callable, Generator, Generic, Sequence, TypeVar
+from typing import Any, Callable, Generator, Generic, Sequence, TypeVar, cast
 
 from .result import Err, Ok, Result
 
 Input = TypeVar("Input", bound=Sequence)
 Output = TypeVar("Output")
+
 T = TypeVar("T")
 
 
@@ -87,7 +88,7 @@ class Parser(Generic[Input, Output]):
         (result, _) = (self << eof).parse_partial(stream)
         return result
 
-    def parse_partial(self, stream: Input) -> tuple[Output, Sequence]:
+    def parse_partial(self, stream: Input) -> tuple[Output, Input]:
         """
         Parses the longest possible prefix of a given string.
         Returns a tuple of the result and the unparsed remainder,
@@ -99,10 +100,14 @@ class Parser(Generic[Input, Output]):
         if isinstance(result, Err):
             raise result
 
-        return (result.value, stream[result.index :])
+        value = result.value
+        remainder = cast(Input, stream[result.index :])
+
+        return (value, remainder)
 
     def bind(
-        self, bind_fn: Callable[[Output], "Parser[Input, T]"]
+        self,
+        bind_fn: Callable[[Output], "Parser[Input, T]"],
     ) -> "Parser[Input, T]":
         @Parser
         def bound_parser(stream: Input, index: int):
@@ -116,7 +121,10 @@ class Parser(Generic[Input, Output]):
 
         return bound_parser
 
-    def map(self, map_function: Callable[[Output], T]) -> "Parser[Input, T]":
+    def map(
+        self,
+        map_function: Callable[[Output], T],
+    ) -> "Parser[Input, T]":
         """
         Returns a parser that transforms the produced value of the initial parser with map_function.
         """
@@ -337,7 +345,7 @@ class Parser(Generic[Input, Output]):
 
     def __or__(self, other: "Parser[Input, T]") -> "Parser[Input, Output | T]":
         @Parser
-        def inner(stream: Input, index: int) -> Result[Output | T]:
+        def alt_parser(stream: Input, index: int) -> Result[Output | T]:
             res1 = self(stream, index)
 
             if isinstance(res1, Ok):
@@ -350,7 +358,7 @@ class Parser(Generic[Input, Output]):
 
             return Ok(res2.value, index)
 
-        return inner
+        return alt_parser
 
 
 def success(value: T) -> Parser[Input, T]:
