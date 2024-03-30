@@ -9,7 +9,7 @@ from .string import string
 E = TypeVar("E", bound=Enum)
 
 
-def from_enum(enum_cls: type[E], transform=noop) -> Parser[E]:
+def from_enum(enum_cls: type[E], transform=noop) -> Parser[str, E]:
     """
     Given a class that is an enum.Enum class
     https://docs.python.org/3/library/enum.html , returns a parser that

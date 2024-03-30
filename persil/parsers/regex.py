@@ -6,7 +6,7 @@ from persil.result import Err, Ok, Result
 
 def regex(
     exp: str | re.Pattern[str], flags=0, group: int | str | tuple = 0
-) -> Parser[str]:
+) -> Parser[str, str]:
     """
     Returns a parser that expects the given ``exp``, and produces the
     matched string. ``exp`` can be a compiled regular expression, or a
@@ -36,12 +36,12 @@ def regex(
 
 def regex_groupdict(
     exp: str | re.Pattern[str], flags=0
-) -> Parser[dict[str, str | None]]:
+) -> Parser[str, dict[str, str | None]]:
     if isinstance(exp, (str, bytes)):
         exp = re.compile(exp, flags)
 
     @Parser
-    def regex_parser(stream, index) -> Result[dict[str, str | None]]:
+    def regex_parser(stream: str, index: int) -> Result[dict[str, str | None]]:
         match = exp.match(stream, index)
         if match:
             return Ok(match.groupdict(), match.end())

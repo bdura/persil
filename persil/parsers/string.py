@@ -5,7 +5,7 @@ from persil.result import Err, Ok, Result
 from persil.utils import noop
 
 
-def string(expected_string: str, transform: Callable[[str], str] = noop) -> Parser[str]:
+def string(expected_string: str, transform: Callable[[str], str] = noop) -> Parser[str, str]:
     """
     Returns a parser that expects the ``expected_string`` and produces
     that string value.
@@ -18,7 +18,7 @@ def string(expected_string: str, transform: Callable[[str], str] = noop) -> Pars
     transformed_s = transform(expected_string)
 
     @Parser
-    def string_parser(stream, index) -> Result[str]:
+    def string_parser(stream: str, index: int) -> Result[str]:
         if transform(stream[index : index + slen]) == transformed_s:
             return Ok(expected_string, index + slen)
         else:
