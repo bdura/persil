@@ -2,7 +2,9 @@ import pytest
 
 from persil import regex, regex_groupdict, string
 
-parser_plain = regex(r"\d{2}") >> string("/") >> regex(r"\d{2}") >> string("/") >> regex(r"\d{4}")
+parser_plain = (
+    regex(r"\d{2}") >> string("/") >> regex(r"\d{2}") >> string("/") >> regex(r"\d{4}")
+)
 parser_groups = regex_groupdict(r"(?P<day>\d\d)/(?P<month>\d\d)/(?P<year>\d\d\d\d)")
 
 EXAMPLES = [

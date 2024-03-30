@@ -9,6 +9,7 @@ EXAMPLES = [
     "TEST",
 ]
 
+
 @pytest.mark.parametrize("message", EXAMPLES)
 def test_string_parser(message: str):
     parser.parse(message)
