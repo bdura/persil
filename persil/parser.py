@@ -7,6 +7,7 @@ Input = TypeVar("Input", bound=Sequence)
 Output = TypeVar("Output")
 
 T = TypeVar("T")
+In = TypeVar("In", bound=Sequence)
 
 
 class Parser(Generic[Input, Output]):
@@ -33,12 +34,11 @@ class Parser(Generic[Input, Output]):
     def __call__(self, stream: Input, index: int) -> Result[Output]:
         return self.wrapped_fn(stream, index)
 
-    def then(self, other: "Parser[Input, T]") -> "Parser[Input, T]":
+    def then(self, other: "Parser[Any, T]") -> "Parser[Input, T]":
         """
         Returns a parser which, if the initial parser succeeds, will
-        continue parsing with ``other``. This will produce the
-        value produced by ``other``.
-
+        continue parsing with `other`. This will produce the
+        value produced by `other`.
         """
 
         @Parser
@@ -48,7 +48,7 @@ class Parser(Generic[Input, Output]):
             if isinstance(result, Err):
                 return result
 
-            return other(stream, result.index)
+            return other(stream, result.index)  # type: ignore
 
         return bound_parser
 
@@ -76,7 +76,7 @@ class Parser(Generic[Input, Output]):
         return bound_parser
 
     # >>
-    def __rshift__(self, other: "Parser[Input, T]") -> "Parser[Input, T]":
+    def __rshift__(self, other: "Parser[In, T]") -> "Parser[Input, T]":
         return self.then(other)
 
     # <<

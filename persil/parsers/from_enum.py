@@ -4,14 +4,14 @@ from typing import TypeVar
 from persil import Parser
 from persil.utils import noop
 
-from .string import string
+from .tag import tag
 
 E = TypeVar("E", bound=Enum)
 
 
 def from_enum(enum_cls: type[E], transform=noop) -> Parser[str, E]:
     """
-    Given a class that is an enum.Enum class
+    Given a class that is an `enum.Enum` class
     https://docs.python.org/3/library/enum.html , returns a parser that
     will parse the values (or the string representations of the values)
     and return the corresponding enum item.
@@ -23,7 +23,7 @@ def from_enum(enum_cls: type[E], transform=noop) -> Parser[str, E]:
         reverse=True,
     )
 
-    parsers = [string(key, transform=transform).result(value) for key, value in items]
+    parsers = [tag(key, transform=transform).result(value) for key, value in items]
 
     parser = parsers[0]
 
