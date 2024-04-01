@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import Any, Callable, Generator, Generic, Sequence, TypeVar, cast
+from typing import Any, Callable, Generator, Generic, Sequence, TypeVar, cast, overload
 
 from .result import Err, Ok, Result
 
@@ -76,19 +76,57 @@ class Parser(Generic[Input, Output]):
         return bound_parser
 
     # >>
-    def __rshift__(self, other: "Parser[In, T]") -> "Parser[Input, T]":
+    def __rshift__(
+        self,
+        other: "Parser[In, T]",
+    ) -> "Parser[Input, T]":
         return self.then(other)
 
     # <<
-    def __lshift__(self, other: "Parser") -> "Parser[Input, Output]":
+    def __lshift__(
+        self,
+        other: "Parser",
+    ) -> "Parser[Input, Output]":
         return self.skip(other)
 
-    def parse(self, stream: Input) -> Output:
+    def combine(
+        self,
+        other: "Parser[Input, T]",
+    ) -> "Parser[Input, tuple[Output, T]]":
+        @Parser
+        def combined_parser(stream: Input, index: int) -> Result[tuple[Output, T]]:
+            res1 = self(stream, index)
+
+            if isinstance(res1, Err):
+                return res1
+
+            res2 = other(stream, res1.index)
+
+            if isinstance(res2, Err):
+                return res2
+
+            return Ok((res1.value, res2.value), res2.index)
+
+        return combined_parser
+
+    def __and__(
+        self,
+        other: "Parser[Input, T]",
+    ) -> "Parser[Input, tuple[Output, T]]":
+        return self.combine(other)
+
+    def parse(
+        self,
+        stream: Input,
+    ) -> Output:
         """Parses a string or list of tokens and returns the result or raise a ParseError."""
         (result, _) = (self << eof).parse_partial(stream)
         return result
 
-    def parse_partial(self, stream: Input) -> tuple[Output, Input]:
+    def parse_partial(
+        self,
+        stream: Input,
+    ) -> tuple[Output, Input]:
         """
         Parses the longest possible prefix of a given string.
         Returns a tuple of the result and the unparsed remainder,
@@ -343,7 +381,10 @@ class Parser(Generic[Input, Output]):
 
         return inner
 
-    def __or__(self, other: "Parser[Input, T]") -> "Parser[Input, Output | T]":
+    def __or__(
+        self,
+        other: "Parser[Input, T]",
+    ) -> "Parser[Input, Output | T]":
         @Parser
         def alt_parser(stream: Input, index: int) -> Result[Output | T]:
             res1 = self(stream, index)
@@ -381,16 +422,15 @@ def eof(stream: Input, index: int) -> Result[None]:
         return Err(index, ["EOF"], stream)
 
 
-def generate(gen: Callable[[], Generator[Parser, Any, T]]) -> Parser[Input, T]:
-    """
-    Creates a parser from a generator function
-    """
-    # if isinstance(gen, str):
-    #     return lambda f: generate(f).desc(gen)
+ParseGen = Generator[Parser[In, Any], Any, T]
 
+
+def _generate(
+    gen: Callable[[], ParseGen[In, T]],
+) -> Parser[In, T]:
     @Parser
     @wraps(gen)
-    def generated(stream: Input, index: int) -> Result[T]:
+    def generated(stream: In, index: int) -> Result[T]:
         # start up the generator
         iterator = gen()
 
@@ -409,3 +449,17 @@ def generate(gen: Callable[[], Generator[Parser, Any, T]]) -> Parser[Input, T]:
             return Ok(return_value, index)
 
     return generated
+
+
+@overload
+def generate(gen: Callable[[], ParseGen[In, T]]) -> Parser[In, T]: ...
+@overload
+def generate(gen: str) -> Callable[[Callable[[], ParseGen[In, T]]], Parser[In, T]]: ...
+
+
+def generate(gen):
+    if isinstance(gen, str):
+        return lambda f: _generate(f).desc(gen)
+
+    else:
+        return _generate(gen)

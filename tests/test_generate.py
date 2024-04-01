@@ -12,7 +12,7 @@ class Flight(BaseModel):
 
     @staticmethod
     def parser() -> Parser[str, "Flight"]:
-        @generate
+        @generate("Flight parser")
         def parser():
             carrier = yield regex(r"[A-Z]{2}")
             flight_number = yield regex(r"\d{2,4}")
