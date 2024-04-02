@@ -12,14 +12,12 @@ class Ok(Generic[T]):
     value: T
     index: int
 
-    def cut(self):
-        pass
+    def ok_or_raise(self) -> "Ok[T]":
+        """No-op function."""
+        return self
 
     def map(self, map_function: Callable[[T], T2]) -> "Ok[T2]":
         return Ok(value=map_function(self.value), index=self.index)
-
-    def aggregate(self, other: "Result[T]") -> "Result[T]":
-        return self
 
 
 @dataclass
@@ -36,7 +34,8 @@ class Err(Exception):
         else:
             return f"expected one of {', '.join(self.expected)} at {li}"
 
-    def cut(self):
+    def ok_or_raise(self):
+        """Raise the error directly"""
         raise self
 
     def map(self, map_function: Callable) -> "Err":
