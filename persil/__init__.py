@@ -10,6 +10,7 @@ from .parsers import (
     tag,
     whitespace,
 )
+from .stream import Stream, from_stream
 
 __all__ = [
     "Parser",
@@ -24,4 +25,6 @@ __all__ = [
     "tag",
     "whitespace",
     "string",
+    "Stream",
+    "from_stream",
 ]
