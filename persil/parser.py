@@ -34,6 +34,18 @@ class Parser(Generic[Input, Output]):
     def __call__(self, stream: Input, index: int) -> Result[Output]:
         return self.wrapped_fn(stream, index)
 
+    def cut(self) -> "Parser[Input, Output]":
+        """
+        Commit to the current branch by raising the error if it's returned.
+        """
+
+        @Parser
+        def cut_parser(stream: Input, index: int) -> Result[Output]:
+            result = self(stream, index)
+            return result.ok_or_raise()
+
+        return cut_parser
+
     def then(self, other: "Parser[In, T]") -> "Parser[Input, T]":
         """
         Returns a parser which, if the initial parser succeeds, will
