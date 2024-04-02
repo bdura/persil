@@ -6,6 +6,7 @@ from .parsers import (
     line_info,
     regex,
     regex_groupdict,
+    string,
     tag,
     whitespace,
 )
@@ -21,4 +22,6 @@ __all__ = [
     "regex",
     "regex_groupdict",
     "tag",
+    "whitespace",
+    "string",
 ]

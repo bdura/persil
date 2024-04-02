@@ -1,9 +1,7 @@
 import pytest
 from pydantic import BaseModel
 
-from persil import generate
-from persil.parser import Parser
-from persil.parsers import regex
+from persil import Parser, generate, regex
 
 
 class Flight(BaseModel):
