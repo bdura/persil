@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "persil"
-version = "0.1.0-alpha0"
+version = "0.1.0-alpha1"
 description = "Persil is a pure-python parsing library, inspired by Parsy"
 authors = ["Basile Dura <basile@bdura.me>"]
 readme = "README.md"

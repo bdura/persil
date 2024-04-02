@@ -21,7 +21,7 @@ shortcuts had to be taken in many cases.
 Persil is a pure-Python library. You can install it with pip:
 
 ```shell
-pip install git+https://github.com/bdura/persil
+pip install persil
 ```
 
 Then, you can play with persil much the same way you would with Parsy,
@@ -34,6 +34,11 @@ from persil import regex
 
 year = regex(r"\d{4}").map(int)
 ```
+
+This example should drive home the point that Persil is heavily inspired by Parsy.
+The only difference in this particular case is type-safety:
+the persil version knows that `year` is a parser that expects
+a `str`, and outputs an `int`.
 
 ### More complex parsers
 
@@ -138,4 +143,4 @@ def datetime_parser(stream: Stream[str]) -> datetime:
     return datetime(year, month, day)
 ```
 
-That way, the parsers are only defined once.
+That way, the lower-level parsers are only defined once.
