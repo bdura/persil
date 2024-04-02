@@ -90,3 +90,28 @@ For those coming from Parsy, here are some notable differences:
 - `Err` is its own error: it inherits from `Exception` and can be raised.
 - Persil introduces the `Stream` class, a wrapper around the input that can apply parsers sequentially,
   keeping track of the book-keeping.
+
+## Performance tips
+
+Since Persil takes a functional approach, every transformation on a parser produces a new parser.
+With that in mind, the way you define/use/combine parsers may substantially affect performance.
+
+Consider the following example:
+
+```python
+from datetime import datetime
+
+from persil import Stream, from_stream, regex, string
+
+
+@from_stream
+def datetime_parser(stream: Stream[str]) -> datetime:
+    year = stream.apply(regex(r"\d{4}").map(int))
+    stream.apply(string("/"))
+    month = stream.apply(regex(r"\d{2}").map(int))
+    stream.apply(string("/"))
+    day = stream.apply(regex(r"\d{2}").map(int))
+    return datetime(year, month, day)
+```
+
+That code will re-create a new regex parser **every time** `datetime_parser` is called.
