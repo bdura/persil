@@ -18,6 +18,9 @@ class Ok(Generic[T]):
     def map(self, map_function: Callable[[T], T2]) -> "Ok[T2]":
         return Ok(value=map_function(self.value), index=self.index)
 
+    def aggregate(self, other: "Result[T]") -> "Result[T]":
+        return self
+
 
 @dataclass
 class Err(Exception):
@@ -38,6 +41,15 @@ class Err(Exception):
 
     def map(self, map_function: Callable) -> "Err":
         return self
+
+    def aggregate(self, other: "Result[T]") -> "Result[T]":
+        if isinstance(other, Ok):
+            return other
+
+        furthest = max(self.index, other.index)
+        expected = self.expected + other.expected
+
+        return Err(furthest, expected, self.stream)
 
 
 Result = Ok[T] | Err

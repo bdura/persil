@@ -1,9 +1,7 @@
 import pytest
 from pydantic import BaseModel
 
-from persil import generate
-from persil.parser import Parser
-from persil.parsers import regex
+from persil import Parser, generate, regex
 
 
 class Flight(BaseModel):
@@ -11,8 +9,8 @@ class Flight(BaseModel):
     flight_number: int
 
     @staticmethod
-    def parser() -> Parser["Flight"]:
-        @generate
+    def parser() -> Parser[str, "Flight"]:
+        @generate("Flight parser")
         def parser():
             carrier = yield regex(r"[A-Z]{2}")
             flight_number = yield regex(r"\d{2,4}")

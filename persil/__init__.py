@@ -1,5 +1,15 @@
 from .parser import Parser, generate, success
-from .parsers import fail, from_enum, index, line_info, regex, regex_groupdict, string
+from .parsers import (
+    fail,
+    from_enum,
+    index,
+    line_info,
+    regex,
+    regex_groupdict,
+    string,
+    tag,
+    whitespace,
+)
 
 __all__ = [
     "Parser",
@@ -11,5 +21,7 @@ __all__ = [
     "line_info",
     "regex",
     "regex_groupdict",
+    "tag",
+    "whitespace",
     "string",
 ]
