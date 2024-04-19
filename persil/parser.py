@@ -31,7 +31,11 @@ class Parser(Generic[Input, Output]):
 
     def cut(self) -> "Parser[Input, Output]":
         """
-        Commit to the current branch by raising the error if it's returned.
+        Commit to the current branch by raising the error one is returned.
+
+        Without `cut`, the error is _returned_, not _raised_, and bubles up
+        until it is handled by another parser (see `optional` for an example),
+        or raised by the `parse(_partial)` top-level method.
         """
 
         @Parser
@@ -536,8 +540,8 @@ def success(
 
     Parameters
     ----------
-    description
-        Description in case of failure.
+    value
+        Value to return.
     """
     return Parser(lambda _, index: Ok(value, index))
 
