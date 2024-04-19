@@ -15,8 +15,8 @@ class Defcon(enum.Enum):
 
 EXAMPLES = [
     ("5", Defcon.FIVE),
-    # ("3", Defcon.THREE),
-    # ("1", Defcon.ONE),
+    ("3", Defcon.THREE),
+    ("1", Defcon.ONE),
 ]
 
 parser = from_enum(Defcon)
