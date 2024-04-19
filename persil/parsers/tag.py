@@ -16,6 +16,14 @@ def tag(
 
     Optionally, a transform function can be passed, which will be used on both
     the expected and tested input.
+
+    Parameters
+    ----------
+    expected
+        The expected sequence.
+    transform
+        An optional transform, applied to the expected value as well as
+        the input stream.
     """
 
     slen = len(expected)

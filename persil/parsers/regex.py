@@ -40,6 +40,12 @@ def regex_groupdict(
     exp: str | re.Pattern[str],
     flags=0,
 ) -> Parser[str, dict[str, str | None]]:
+    """
+    Returns a parser that leverages named groups to obtain the return value.
+
+    For instance, the following pattern: (eg `(?P<year>\d{4})-(?P<month>\d{2})`)
+    will return a dictionary with two keys, `year` and `month`.
+    """
     if isinstance(exp, (str, bytes)):
         exp = re.compile(exp, flags)
 

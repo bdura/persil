@@ -1,4 +1,5 @@
-from .parser import Parser, generate, success
+from .generator import generate
+from .parser import Parser, success
 from .parsers import (
     fail,
     from_enum,

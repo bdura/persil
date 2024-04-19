@@ -18,7 +18,7 @@ def string(
     the expected and tested input.
 
     Breaking change from `parsy`: the matched string will be returned.
-    You may achieve `parsy`'s behaviour by chaining the `result` method:
+    You may achieve `parsy`'s behaviour by chaining the `result` method.
 
     ```python
     expected = "TesT"

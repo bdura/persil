@@ -10,9 +10,11 @@ S = TypeVar("S", str, bytes)
 
 @Parser
 def index(stream: T, index: int) -> Result[int]:
+    """Return the current index"""
     return Ok(index, index)
 
 
 @Parser
 def line_info(stream: S, index: int) -> Result[RowCol]:
+    """Return the line information (row, col)"""
     return Ok(line_info_at(stream, index), index)

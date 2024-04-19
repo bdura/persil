@@ -15,6 +15,11 @@ def from_enum(enum_cls: type[E], transform=noop) -> Parser[str, E]:
     https://docs.python.org/3/library/enum.html , returns a parser that
     will parse the values (or the string representations of the values)
     and return the corresponding enum item.
+
+    Parameters
+    ----------
+    enum_cls
+        Enum class to parse
     """
 
     items = sorted(
