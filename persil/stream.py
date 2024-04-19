@@ -13,9 +13,6 @@ class SoftError(Exception):
 
 
 class Stream(Generic[In]):
-    inner: In
-    index: int
-
     def __init__(self, inner: In, index: int = 0):
         self.inner = inner
         self.index = index
@@ -56,6 +53,5 @@ def from_stream(
 def from_stream(func: str | Callable[[Stream[In]], Out]):
     if isinstance(func, str):
         return lambda f: _from_stream(f).desc(func)
-
     else:
         return _from_stream(func)
