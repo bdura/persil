@@ -23,3 +23,6 @@ coverage.xml
 # Data
 data/
 *.db
+
+# MkDocs
+site

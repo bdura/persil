@@ -13,6 +13,12 @@ class SoftError(Exception):
 
 
 class Stream(Generic[In]):
+    """
+    The `Stream` API lets you apply parsers iteratively, and handles
+    the index bookeeping for you. Its design goal is to be used with
+    the `from_stream` decorator.
+    """
+
     def __init__(self, inner: In, index: int = 0):
         self.inner = inner
         self.index = index

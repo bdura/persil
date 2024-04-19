@@ -1,0 +1,52 @@
+site_name: Persil
+
+repo_url: https://github.com/bdura/persil
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      toggle:
+        icon: material/brightness-4
+        name: Switch to dark mode
+    - scheme: slate
+      toggle:
+        icon: material/brightness-7
+        name: Switch to light mode
+
+markdown_extensions:
+  - admonition
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - footnotes
+
+nav:
+  - index.md
+  - api-reference.md
+  - changelog.md
+
+watch:
+  - persil/
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            allow_inspection: true
+            docstring_style: numpy
+            docstring_section_style: spacy
+            heading_level: 2
+            members_order: source
+            show_bases: false
+            show_signature: false
+            merge_init_into_class: true
+  - mike
+
+hooks:
+  - docs/scripts/plugin.py

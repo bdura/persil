@@ -14,9 +14,9 @@ class Parser(Generic[Input, Output]):
     """
     A Parser is an object that wraps a function whose arguments are
     a string to be parsed and the index on which to begin parsing.
-    The function should return either Result.success(next_index, value),
+    The function should return either `Result.success(next_index, value)`,
     where the next index is where to continue the parse and the value is
-    the yielded value, or Result.failure(index, expected), where expected
+    the yielded value, or `Result.failure(index, expected)`, where expected
     is a string indicating what was expected, and the index is the index
     of the failure.
     """
@@ -105,6 +105,14 @@ class Parser(Generic[Input, Output]):
         self,
         other: "Parser[Input, T]",
     ) -> "Parser[Input, tuple[Output, T]]":
+        """
+        Returns a parser which, if the initial parser succeeds, will
+        continue parsing with `other`. It will produce a tuple
+        containing the results from both parsers, in order.
+
+        The resulting parser fails if `other` fails.
+        """
+
         @Parser
         def combined_parser(stream: Input, index: int) -> Result[tuple[Output, T]]:
             res1 = self(stream, index)
@@ -142,7 +150,7 @@ class Parser(Generic[Input, Output]):
         """
         Parses the longest possible prefix of a given string.
         Returns a tuple of the result and the unparsed remainder,
-        or raises ParseError
+        or raises `ParseError`.
         """
 
         result = self(stream, 0)
@@ -176,7 +184,8 @@ class Parser(Generic[Input, Output]):
         map_function: Callable[[Output], T],
     ) -> "Parser[Input, T]":
         """
-        Returns a parser that transforms the produced value of the initial parser with map_function.
+        Returns a parser that transforms the produced value of the initial parser
+        with `map_function`.
         """
 
         @Parser
@@ -189,7 +198,7 @@ class Parser(Generic[Input, Output]):
     def result(self, value: T) -> "Parser[Input, T]":
         """
         Returns a parser that, if the initial parser succeeds, always produces
-        the passed in ``value``.
+        the passed in `value`.
         """
 
         @Parser
@@ -203,11 +212,24 @@ class Parser(Generic[Input, Output]):
 
         return result_parser
 
-    def times(self, min: int, max: int | None = None) -> "Parser[Input, list[Output]]":
+    def times(
+        self,
+        min: int,
+        max: int | None = None,
+        check_next: bool = False,
+    ) -> "Parser[Input, list[Output]]":
         """
-        Returns a parser that expects the initial parser at least ``min`` times,
-        and at most ``max`` times, and produces a list of the results. If only one
+        Returns a parser that expects the initial parser at least `min` times,
+        and at most `max` times, and produces a list of the results. If only one
         argument is given, the parser is expected exactly that number of times.
+
+        Parameters
+        ----------
+        min
+            Minimal number of times the parser should match.
+        max
+            Maximal number of times the parser should match.
+            Equals to `min` by default
         """
         if max is None:
             max = min
