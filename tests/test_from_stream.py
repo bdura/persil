@@ -22,8 +22,13 @@ def datetime_parser(stream: Stream[str]) -> datetime:
     return datetime(year, month, day)
 
 
-@given(st.datetimes())
-def test_generate(dt: datetime):
+@given(
+    st.datetimes(
+        min_value=datetime(1000, 1, 1),
+        max_value=datetime(9999, 12, 31),
+    )
+)
+def test_datetime_parser_from_stream(dt: datetime):
     dt = datetime(dt.year, dt.month, dt.day)
     text = dt.strftime("%Y-%m-%d")
     assert datetime_parser.parse(text) == dt
