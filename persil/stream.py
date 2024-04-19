@@ -9,7 +9,9 @@ Out = TypeVar("Out")
 
 
 class SoftError(Exception):
-    inner: Err
+    def __init__(self, inner: Err) -> None:
+        self.inner = inner
+        super().__init__()
 
 
 class Stream(Generic[In]):

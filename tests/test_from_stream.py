@@ -1,30 +1,29 @@
-import pytest
-from pydantic import BaseModel
+from datetime import datetime
 
-from persil import regex
+from hypothesis import given
+from hypothesis import strategies as st
+
+from persil import regex, string
 from persil.stream import Stream, from_stream
 
-
-class Flight(BaseModel):
-    carrier: str
-    flight_number: int
-
-
-@from_stream("Flight parser")
-def flight_parser(stream: Stream[str]) -> Flight:
-    carrier = stream.apply(regex(r"[A-Z]{2}"))
-    flight_number = stream.apply(regex(r"\d{2,4}").map(int))
-
-    return Flight(carrier=carrier, flight_number=flight_number)
+year_parser = regex(r"\d{4}").map(int)
+month_parser = regex(r"(?:0\d|1[012])").map(int)
+day_parser = regex(r"(?:[012]\d|3[01])").map(int)
 
 
-EXAMPLES = [
-    ("AF071", Flight(carrier="AF", flight_number=71)),
-    ("LY180", Flight(carrier="LY", flight_number=180)),
-]
+@from_stream
+def datetime_parser(stream: Stream[str]) -> datetime:
+    year = stream.apply(year_parser)
+    stream.apply(string("-"))
+    month = stream.apply(month_parser)
+    stream.apply(string("-"))
+    day = stream.apply(day_parser)
+
+    return datetime(year, month, day)
 
 
-@pytest.mark.parametrize("message,expected", EXAMPLES)
-def test_generate(message: str, expected: Flight):
-    flight = flight_parser.parse(message)
-    assert flight == expected
+@given(st.datetimes())
+def test_generate(dt: datetime):
+    dt = datetime(dt.year, dt.month, dt.day)
+    text = dt.strftime("%Y-%m-%d")
+    assert datetime_parser.parse(text) == dt

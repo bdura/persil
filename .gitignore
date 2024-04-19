@@ -7,6 +7,7 @@
 
 # Python
 __pycache__
+.hypothesis
 .venv
 
 # Coverage

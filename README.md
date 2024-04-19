@@ -4,8 +4,7 @@ Persil is a pure-python parsing library that draws much (most, let's be honest)
 of its inspiration from the excellent [Parsy](https://github.com/python-parsy/parsy) library.
 
 Hence the name, "Persil" ([pɛʁ.sil] or [pɛʁ.si]), the French word for parsley
--a most questionable pun on `Parsy -> Parsley -> Persil`,
-in case anyone missed it.
+-a most questionable pun on `Parsy -> Parsley -> Persil`, in case anyone missed it.
 
 Like Parsy, Persil is a _"monadic parser combinator library for LL(infinity) grammars"_.
 As a rough approximation, you can think of Persil as a typed "fork" of Parsy.
