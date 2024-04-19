@@ -46,6 +46,7 @@ plugins:
             show_bases: false
             show_signature: false
             merge_init_into_class: true
+  - mike
 
 hooks:
   - docs/scripts/plugin.py

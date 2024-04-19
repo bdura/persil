@@ -23,6 +23,7 @@ pydantic = "^2.6.4"
 [tool.poetry.group.docs.dependencies]
 mkdocs-material = "^9.5.18"
 mkdocstrings = {extras = ["python"], version = "^0.24.3"}
+mike = "^2.0.0"
 
 [build-system]
 requires = ["poetry-core"]
