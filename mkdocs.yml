@@ -50,3 +50,7 @@ plugins:
 
 hooks:
   - docs/scripts/plugin.py
+
+extra:
+  version:
+    provider: mike
