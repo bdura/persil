@@ -6,7 +6,6 @@ repos:
       - id: no-commit-to-branch
       - id: end-of-file-fixer
       - id: check-yaml
-        args: ["--unsafe"]
       - id: check-toml
       - id: check-json
       - id: check-symlinks
