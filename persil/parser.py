@@ -92,7 +92,7 @@ class Parser(Generic[Input, Output]):
             if isinstance(other_result, Err):
                 return other_result
 
-            return result
+            return Ok(result.value, other_result.index)
 
         return skip_parser
 
