@@ -1,21 +1,20 @@
 from functools import wraps
-from typing import Any, Callable, Generator, Sequence, TypeVar, overload
+from typing import Any, Callable, Generator, Sequence, overload
+from warnings import deprecated
 
 from .parser import Parser
 from .result import Err, Ok, Result
 
-Input = TypeVar("Input", bound=Sequence)
-Output = TypeVar("Output")
 
-ParseGen = Generator[Parser[Input, Any], Any, Output]
+type ParseGen[In: Sequence, Out] = Callable[[], Generator[Parser[In, Any], Any, Out]]
 
 
-def _generate(
-    gen: Callable[[], ParseGen[Input, Output]],
-) -> Parser[Input, Output]:
+def _generate[In: Sequence, Out](
+    gen: ParseGen[In, Out],
+) -> Parser[In, Out]:
     @Parser
     @wraps(gen)
-    def generated(stream: Input, index: int) -> Result[Output]:
+    def generated(stream: In, index: int) -> Result[Out]:
         # start up the generator
         iterator = gen()
 
@@ -30,21 +29,26 @@ def _generate(
                 value = result.value
                 index = result.index
         except StopIteration as stop:
-            return_value: Output = stop.value
+            return_value: Out = stop.value
             return Ok(return_value, index)
 
     return generated
 
 
 @overload
-def generate(gen: Callable[[], ParseGen[Input, Output]]) -> Parser[Input, Output]: ...
+def generate[In: Sequence, Out](
+    gen: ParseGen[In, Out],
+) -> Parser[In, Out]: ...
 @overload
-def generate(
+def generate[In: Sequence, Out](
     gen: str,
-) -> Callable[[Callable[[], ParseGen[Input, Output]]], Parser[Input, Output]]: ...
+) -> Callable[[ParseGen[In, Out]], Parser[In, Out]]: ...
 
 
-def generate(gen):
+@deprecated("The `generate` API is deprecated. Consider using `from_stream` instead.")
+def generate[In: Sequence, Out](
+    gen: str | ParseGen[In, Out],
+) -> Parser[In, Out] | Callable[[ParseGen[In, Out]], Parser[In, Out]]:
     """
     Create a complex parser using the generator syntax.
 

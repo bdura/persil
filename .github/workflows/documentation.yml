@@ -13,14 +13,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install poetry
-        run: |
-          pip install poetry
-          poetry install --only docs
+      - uses: cachix/install-nix-action@v30
+      - uses: nicknovitski/nix-develop@v1
+        name: nix develop
 
       - name: Set up Git
         run: |
@@ -30,5 +25,5 @@ jobs:
       - name: Build documentation
         run: |
           git fetch origin gh-pages
-          poetry run mike delete main
-          poetry run mike deploy --push main
+          uv run mike delete main
+          uv run mike deploy --push main

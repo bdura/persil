@@ -1,11 +1,8 @@
 from functools import wraps
-from typing import Callable, Generic, Sequence, TypeVar, overload
+from typing import Callable, Sequence, overload
 
 from .parser import Parser
 from .result import Err, Ok, Result
-
-In = TypeVar("In", bound=Sequence)
-Out = TypeVar("Out")
 
 
 class SoftError(Exception):
@@ -14,7 +11,7 @@ class SoftError(Exception):
         super().__init__()
 
 
-class Stream(Generic[In]):
+class Stream[In: Sequence]:
     """
     The `Stream` API lets you apply parsers iteratively, and handles
     the index bookeeping for you. Its design goal is to be used with
@@ -25,7 +22,7 @@ class Stream(Generic[In]):
         self.inner = inner
         self.index = index
 
-    def apply(self, parser: Parser[In, Out]) -> Out:
+    def apply[Out](self, parser: Parser[In, Out]) -> Out:
         res = parser(self.inner, self.index)
 
         if isinstance(res, Err):
@@ -36,7 +33,9 @@ class Stream(Generic[In]):
         return res.value
 
 
-def _from_stream(func: Callable[[Stream[In]], Out]) -> Parser[In, Out]:
+def _from_stream[In: Sequence, Out](
+    func: Callable[[Stream[In]], Out],
+) -> Parser[In, Out]:
     @Parser
     @wraps(func)
     def fn(stream: In, index: int) -> Result[Out]:
@@ -51,14 +50,24 @@ def _from_stream(func: Callable[[Stream[In]], Out]) -> Parser[In, Out]:
 
 
 @overload
-def from_stream(func: Callable[[Stream[In]], Out]) -> Parser[In, Out]: ...
+def from_stream[In: Sequence, Out](
+    func: Callable[[Stream[In]], Out],
+) -> Parser[In, Out]: ...
 @overload
-def from_stream(
+def from_stream[In: Sequence, Out](
     func: str,
 ) -> Callable[[Callable[[Stream[In]], Out]], Parser[In, Out]]: ...
 
 
-def from_stream(func: str | Callable[[Stream[In]], Out]):
+def from_stream[In: Sequence, Out](
+    func: str | Callable[[Stream[In]], Out],
+) -> (
+    Parser[In, Out]
+    | Callable[
+        [Callable[[Stream[In]], Out]],
+        Parser[In, Out],
+    ]
+):
     if isinstance(func, str):
         return lambda f: _from_stream(f).desc(func)
     else:
