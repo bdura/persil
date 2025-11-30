@@ -89,7 +89,7 @@ class Parser[In: Sequence, Out]:
             if isinstance(other_result, Err):
                 return other_result
 
-            return result
+            return result.with_index(other_result.index)
 
         return skip_parser
 

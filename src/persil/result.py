@@ -15,8 +15,14 @@ class Ok[T]:
         """No-op function."""
         return self
 
-    def map[T2](self, map_function: Callable[[T], T2]) -> Ok[T2]:
+    def map[Out](self, map_function: Callable[[T], Out]) -> Ok[Out]:
         return Ok(value=map_function(self.value), index=self.index)
+
+    def with_index(self, index: int) -> Ok[T]:
+        return Ok(
+            value=self.value,
+            index=index,
+        )
 
 
 @dataclass
