@@ -1,15 +1,13 @@
-from typing import Callable, Generic, Sequence, TypeVar, cast
+from __future__ import annotations
+
+from typing import Any, Callable, Sequence, cast
 
 from .result import Err, Ok, Result
 
-Input = TypeVar("Input", bound=Sequence)
-Output = TypeVar("Output")
-
-T = TypeVar("T")
-In = TypeVar("In", bound=Sequence)
+type Wrapped[In: Sequence, Out] = Callable[[In, int], Result[Out]]
 
 
-class Parser(Generic[Input, Output]):
+class Parser[In: Sequence, Out]:
     """
     A Parser is an object that wraps a function whose arguments are
     a string to be parsed and the index on which to begin parsing.
@@ -22,14 +20,14 @@ class Parser(Generic[Input, Output]):
 
     def __init__(
         self,
-        wrapped_fn: Callable[[Input, int], Result[Output]],
+        wrapped_fn: Wrapped[In, Out],
     ):
         self.wrapped_fn = wrapped_fn
 
-    def __call__(self, stream: Input, index: int) -> Result[Output]:
+    def __call__(self, stream: In, index: int) -> Result[Out]:
         return self.wrapped_fn(stream, index)
 
-    def cut(self) -> "Parser[Input, Output]":
+    def cut(self) -> Parser[In, Out]:
         """
         Commit to the current branch by raising the error one is returned.
 
@@ -39,13 +37,13 @@ class Parser(Generic[Input, Output]):
         """
 
         @Parser
-        def cut_parser(stream: Input, index: int) -> Result[Output]:
+        def cut_parser(stream: In, index: int) -> Result[Out]:
             result = self(stream, index)
             return result.ok_or_raise()
 
         return cut_parser
 
-    def then(self, other: "Parser[In, T]") -> "Parser[Input, T]":
+    def then[T](self, other: Parser[In, T]) -> Parser[In, T]:
         """
         Returns a parser which, if the initial parser succeeds, will
         continue parsing with `other`. This will produce the
@@ -53,22 +51,21 @@ class Parser(Generic[Input, Output]):
 
         Parameters
         ----------
-        other
-            Other parser to apply if the initial parser succeeds.
+        other: Other parser to apply if the initial parser succeeds.
         """
 
         @Parser
-        def then_parser(stream: Input, index: int) -> Result[T]:
+        def then_parser(stream: In, index: int) -> Result[T]:
             result = self(stream, index)
 
             if isinstance(result, Err):
                 return result
 
-            return other(stream, result.index)  # type: ignore
+            return other(stream, result.index)
 
         return then_parser
 
-    def skip(self, other: "Parser") -> "Parser[Input, Output]":
+    def skip(self, other: Parser[In, Any]) -> Parser[In, Out]:
         """
         Returns a parser which, if the initial parser succeeds, will
         continue parsing with `other`. It will produce the
@@ -81,7 +78,7 @@ class Parser(Generic[Input, Output]):
         """
 
         @Parser
-        def skip_parser(stream: Input, index: int) -> Result[Output]:
+        def skip_parser(stream: In, index: int) -> Result[Out]:
             result = self(stream, index)
 
             if isinstance(result, Err):
@@ -97,23 +94,23 @@ class Parser(Generic[Input, Output]):
         return skip_parser
 
     # >>
-    def __rshift__(
+    def __rshift__[T](
         self,
-        other: "Parser[In, T]",
-    ) -> "Parser[Input, T]":
+        other: Parser[In, T],
+    ) -> Parser[In, T]:
         return self.then(other)
 
     # <<
     def __lshift__(
         self,
-        other: "Parser",
-    ) -> "Parser[Input, Output]":
+        other: Parser,
+    ) -> Parser[In, Out]:
         return self.skip(other)
 
-    def combine(
+    def combine[T](
         self,
-        other: "Parser[Input, T]",
-    ) -> "Parser[Input, tuple[Output, T]]":
+        other: Parser[In, T],
+    ) -> Parser[In, tuple[Out, T]]:
         """
         Returns a parser which, if the initial parser succeeds, will
         continue parsing with `other`. It will produce a tuple
@@ -128,7 +125,7 @@ class Parser(Generic[Input, Output]):
         """
 
         @Parser
-        def combined_parser(stream: Input, index: int) -> Result[tuple[Output, T]]:
+        def combined_parser(stream: In, index: int) -> Result[tuple[Out, T]]:
             res1 = self(stream, index)
 
             if isinstance(res1, Err):
@@ -143,16 +140,16 @@ class Parser(Generic[Input, Output]):
 
         return combined_parser
 
-    def __and__(
+    def __and__[T](
         self,
-        other: "Parser[Input, T]",
-    ) -> "Parser[Input, tuple[Output, T]]":
+        other: Parser[In, T],
+    ) -> Parser[In, tuple[Out, T]]:
         return self.combine(other)
 
     def parse(
         self,
-        stream: Input,
-    ) -> Output:
+        stream: In,
+    ) -> Out:
         """
         Parses a string or list of tokens and returns the result or raise a ParseError.
 
@@ -166,8 +163,8 @@ class Parser(Generic[Input, Output]):
 
     def parse_partial(
         self,
-        stream: Input,
-    ) -> tuple[Output, Input]:
+        stream: In,
+    ) -> tuple[Out, In]:
         """
         Parses the longest possible prefix of a given string.
         Returns a tuple of the result and the unparsed remainder,
@@ -185,34 +182,34 @@ class Parser(Generic[Input, Output]):
             raise result
 
         value = result.value
-        remainder = cast(Input, stream[result.index :])
+        remainder = cast(In, stream[result.index :])
 
         return (value, remainder)
 
-    def map(
+    def map[T](
         self,
-        map_function: Callable[[Output], T],
-    ) -> "Parser[Input, T]":
+        map_function: Callable[[Out], T],
+    ) -> Parser[In, T]:
         """
         Returns a parser that transforms the produced value of the initial parser
         with `map_function`.
         """
 
         @Parser
-        def mapped_parser(stream: Input, index: int) -> Result[T]:
+        def mapped_parser(stream: In, index: int) -> Result[T]:
             res = self(stream, index)
             return res.map(map_function)
 
         return mapped_parser
 
-    def result(self, value: T) -> "Parser[Input, T]":
+    def result[T](self, value: T) -> Parser[In, T]:
         """
         Returns a parser that, if the initial parser succeeds, always produces
         the passed in `value`.
         """
 
         @Parser
-        def result_parser(stream: Input, index: int) -> Result[T]:
+        def result_parser(stream: In, index: int) -> Result[T]:
             res = self(stream, index)
 
             if isinstance(res, Err):
@@ -226,7 +223,7 @@ class Parser(Generic[Input, Output]):
         self,
         min: int,
         max: int | None = None,
-    ) -> "Parser[Input, list[Output]]":
+    ) -> Parser[In, list[Out]]:
         """
         Returns a parser that expects the initial parser at least `min` times,
         and at most `max` times, and produces a list of the results. If only one
@@ -244,7 +241,7 @@ class Parser(Generic[Input, Output]):
             max = min
 
         @Parser
-        def times_parser(stream: Input, index: int) -> Result[list[Output]]:
+        def times_parser(stream: In, index: int) -> Result[list[Out]]:
             values = []
             times = 0
             result = None
@@ -264,14 +261,14 @@ class Parser(Generic[Input, Output]):
 
         return times_parser
 
-    def many(self) -> "Parser[Input, list[Output]]":
+    def many(self) -> Parser[In, list[Out]]:
         """
         Returns a parser that expects the initial parser 0 or more times, and
         produces a list of the results.
         """
         return self.times(0, 9999999)
 
-    def at_most(self, n: int) -> "Parser[Input, list[Output]]":
+    def at_most(self, n: int) -> Parser[In, list[Out]]:
         """
         Returns a parser that expects the initial parser at most `n` times, and
         produces a list of the results.
@@ -283,7 +280,7 @@ class Parser(Generic[Input, Output]):
         """
         return self.times(0, n)
 
-    def at_least(self, n: int) -> "Parser[Input, list[Output]]":
+    def at_least(self, n: int) -> Parser[In, list[Out]]:
         """
         Returns a parser that expects the initial parser at least `n` times, and
         produces a list of the results.
@@ -295,7 +292,7 @@ class Parser(Generic[Input, Output]):
         """
         return self.times(n) + self.many()
 
-    def optional(self, default: T | None = None) -> "Parser[Input, Output | T | None]":
+    def optional(self, default: Out | None = None) -> Parser[In, Out | None]:
         """
         Returns a parser that expects the initial parser zero or once, and maps
         the result to a given default value in the case of no match. If no default
@@ -308,7 +305,7 @@ class Parser(Generic[Input, Output]):
         """
 
         @Parser
-        def optional_parser(stream: Input, index: int) -> Result[Output | T | None]:
+        def optional_parser(stream: In, index: int) -> Result[Out | None]:
             res = self(stream, index)
 
             if isinstance(res, Ok):
@@ -318,12 +315,12 @@ class Parser(Generic[Input, Output]):
 
         return optional_parser
 
-    def until(
+    def until[T](
         self,
-        other: "Parser[Input, T]",
+        other: Parser[In, T],
         min: int = 0,
         max: int = 999999,
-    ) -> "Parser[Input, tuple[list[Output], T]]":
+    ) -> Parser[In, tuple[list[Out], T]]:
         """
         Returns a parser that expects the initial parser followed by `other`.
         The initial parser is expected at least `min` times and at most `max` times.
@@ -344,8 +341,8 @@ class Parser(Generic[Input, Output]):
         """
 
         @Parser
-        def until_parser(stream: Input, index: int) -> Result[tuple[list[Output], T]]:
-            values: list[Output] = []
+        def until_parser(stream: In, index: int) -> Result[tuple[list[Out], T]]:
+            values: list[Out] = []
             times = 0
 
             while True:
@@ -382,12 +379,12 @@ class Parser(Generic[Input, Output]):
 
         return until_parser
 
-    def until_and_discard(
+    def until_and_discard[T](
         self,
-        other: "Parser[Input, T]",
+        other: Parser[In, T],
         min: int = 0,
         max: int = 999999,
-    ) -> "Parser[Input, list[Output]]":
+    ) -> Parser[In, list[Out]]:
         """
         Returns a parser that expects the initial parser followed by `other`.
         The initial parser is expected at least `min` times and at most `max` times.
@@ -407,7 +404,7 @@ class Parser(Generic[Input, Output]):
             matching `other`.
         """
 
-        def discard_next_value(output: tuple[list[Output], T]) -> list[Output]:
+        def discard_next_value(output: tuple[list[Out], T]) -> list[Out]:
             values, _ = output
             return values
 
@@ -415,11 +412,11 @@ class Parser(Generic[Input, Output]):
 
     def sep_by(
         self,
-        sep: "Parser",
+        sep: Parser[In, Any],
         *,
         min: int = 0,
         max: int = 999999,
-    ) -> "Parser[Input, list[Output]]":
+    ) -> Parser[In, list[Out]]:
         """
         Returns a new parser that repeats the initial parser and
         collects the results in a list. Between each item, the `sep` parser
@@ -435,7 +432,7 @@ class Parser(Generic[Input, Output]):
         max
             Maximum number of times that the initial parser should match.
         """
-        zero_times: Parser[Input, list[Output]] = success([])
+        zero_times: Parser[In, list[Out]] = success([])
 
         if max == 0:
             return zero_times
@@ -447,7 +444,7 @@ class Parser(Generic[Input, Output]):
     def desc(
         self,
         description: str,
-    ) -> "Parser[Input, Output]":
+    ) -> Parser[In, Out]:
         """
         Returns a new parser with a description added, which is used in the error message
         if parsing fails.
@@ -459,7 +456,7 @@ class Parser(Generic[Input, Output]):
         """
 
         @Parser
-        def desc_parser(stream: Input, index: int) -> Result[Output]:
+        def desc_parser(stream: In, index: int) -> Result[Out]:
             result = self(stream, index)
             if isinstance(result, Ok):
                 return result
@@ -470,7 +467,7 @@ class Parser(Generic[Input, Output]):
     def should_fail(
         self,
         description: str,
-    ) -> "Parser[Input, Result[Output]]":
+    ) -> Parser[In, Err]:
         """
         Returns a parser that fails when the initial parser succeeds, and succeeds
         when the initial parser fails (consuming no input). A description must
@@ -485,7 +482,7 @@ class Parser(Generic[Input, Output]):
         """
 
         @Parser
-        def fail_parser(stream: Input, index: int):
+        def fail_parser(stream: In, index: int) -> Result[Err]:
             res = self(stream, index)
             if isinstance(res, Ok):
                 return Err(index, [description], stream)
@@ -493,9 +490,9 @@ class Parser(Generic[Input, Output]):
 
         return fail_parser
 
-    def __add__(self, other: "Parser[Input, Output]") -> "Parser[Input, Output]":
+    def __add__(self, other: "Parser[In, Out]") -> "Parser[In, Out]":
         @Parser
-        def inner(stream: Input, index: int) -> Result[Output]:
+        def inner(stream: In, index: int) -> Result[Out]:
             res1 = self(stream, index)
 
             if isinstance(res1, Err):
@@ -510,12 +507,12 @@ class Parser(Generic[Input, Output]):
 
         return inner
 
-    def __or__(
+    def __or__[T](
         self,
-        other: "Parser[Input, T]",
-    ) -> "Parser[Input, Output | T]":
+        other: Parser[In, T],
+    ) -> Parser[In, Out | T]:
         @Parser
-        def alt_parser(stream: Input, index: int) -> Result[Output | T]:
+        def alt_parser(stream: In, index: int) -> Result[Out | T]:
             res1 = self(stream, index)
 
             if isinstance(res1, Ok):
@@ -531,9 +528,9 @@ class Parser(Generic[Input, Output]):
         return alt_parser
 
 
-def success(
+def success[T](
     value: T,
-) -> Parser[Input, T]:
+) -> Parser[Any, T]:
     """
     Returns a parser that does not consume any of the stream, but
     produces `value`.
@@ -547,7 +544,7 @@ def success(
 
 
 @Parser
-def eof(stream: Input, index: int) -> Result[None]:
+def eof(stream: Sequence, index: int) -> Result[None]:
     """
     A parser that only succeeds if the end of the stream has been reached.
     """

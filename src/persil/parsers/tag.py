@@ -1,15 +1,13 @@
-from typing import Callable, TypeVar
+from typing import Any, Callable
 
 from persil import Parser
 from persil.result import Err, Ok, Result
 from persil.utils import noop
 
-T = TypeVar("T", str, bytes)
 
-
-def tag(
+def tag[T: (str, bytes)](
     expected: T,
-    transform: Callable[[T], T] = noop,
+    transform: Callable[[T], Any] = noop,
 ) -> Parser[T, T]:
     """
     Returns a parser that expects `expected` and returns the matched value.

@@ -1,22 +1,21 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Callable, Generic, Sequence, TypeVar
+from typing import Callable, Sequence
 
 from persil.utils import line_info
 
-T = TypeVar("T")
-T2 = TypeVar("T2")
-
 
 @dataclass
-class Ok(Generic[T]):
+class Ok[T]:
     value: T
     index: int
 
-    def ok_or_raise(self) -> "Ok[T]":
+    def ok_or_raise(self) -> Ok[T]:
         """No-op function."""
         return self
 
-    def map(self, map_function: Callable[[T], T2]) -> "Ok[T2]":
+    def map[T2](self, map_function: Callable[[T], T2]) -> Ok[T2]:
         return Ok(value=map_function(self.value), index=self.index)
 
 
@@ -38,10 +37,10 @@ class Err(Exception):
         """Raise the error directly"""
         raise self
 
-    def map(self, map_function: Callable) -> "Err":
+    def map(self, map_function: Callable) -> Err:
         return self
 
-    def aggregate(self, other: "Result[T]") -> "Result[T]":
+    def aggregate[T](self, other: Result[T]) -> Result[T]:
         if isinstance(other, Ok):
             return other
 
@@ -51,4 +50,4 @@ class Err(Exception):
         return Err(furthest, expected, self.stream)
 
 
-Result = Ok[T] | Err
+type Result[T] = Ok[T] | Err

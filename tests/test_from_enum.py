@@ -13,16 +13,17 @@ class Defcon(enum.Enum):
     ONE = "1"
 
 
-EXAMPLES = [
-    ("5", Defcon.FIVE),
-    ("3", Defcon.THREE),
-    ("1", Defcon.ONE),
-]
-
 parser = from_enum(Defcon)
 
 
-@pytest.mark.parametrize("message,expected", EXAMPLES)
+@pytest.mark.parametrize(
+    "message,expected",
+    [
+        ("5", Defcon.FIVE),
+        ("3", Defcon.THREE),
+        ("1", Defcon.ONE),
+    ],
+)
 def test_from_enums(message: str, expected: Defcon):
     res = parser.parse(message)
     assert res == expected

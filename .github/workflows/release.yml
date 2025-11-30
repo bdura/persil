@@ -14,9 +14,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v30
+      - uses: nicknovitski/nix-develop@v1
+        name: nix develop
 
       - name: Build sdist
-        run: pipx run poetry build
+        run: uv build
 
       - uses: actions/upload-artifact@v4
         with:
@@ -45,14 +48,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install poetry
-        run: |
-          pip install poetry
-          poetry install --only docs
+      - uses: cachix/install-nix-action@v30
+      - uses: nicknovitski/nix-develop@v1
+        name: nix develop
 
       - name: Set up Git
         run: |
@@ -62,4 +60,4 @@ jobs:
       - name: Build documentation
         run: |
           git fetch origin gh-pages
-          poetry run mike deploy --push --update-aliases $GITHUB_REF_NAME latest
+          uv run mike deploy --push --update-aliases $GITHUB_REF_NAME latest

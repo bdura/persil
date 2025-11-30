@@ -9,6 +9,8 @@
 __pycache__
 .hypothesis
 .venv
+*.egg
+*.egg-info
 
 # Coverage
 .coverage
