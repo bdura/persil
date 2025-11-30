@@ -24,3 +24,4 @@ testpaths = ["tests"]
 
 [tool.mypy]
 packages = ["persil", "tests"]
+ignore_missing_imports = true

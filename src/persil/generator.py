@@ -1,9 +1,17 @@
 from functools import wraps
 from typing import Any, Callable, Generator, Sequence, overload
-from warnings import deprecated
+
+from persil.utils import noop
 
 from .parser import Parser
 from .result import Err, Ok, Result
+
+try:
+    from warnings import deprecated  # type: ignore
+except ImportError:
+
+    def deprecated[F: Callable](message: str) -> Callable[[F], F]:
+        return noop
 
 
 type ParseGen[In: Sequence, Out] = Callable[[], Generator[Parser[In, Any], Any, Out]]
