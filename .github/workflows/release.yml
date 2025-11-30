@@ -60,4 +60,4 @@ jobs:
       - name: Build documentation
         run: |
           git fetch origin gh-pages
-          uv run mike deploy --push --update-aliases $GITHUB_REF_NAME latest
+          uv run --group docs mike deploy --push --update-aliases $GITHUB_REF_NAME latest
