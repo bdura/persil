@@ -1,4 +1,3 @@
-from .generator import generate
 from .parser import Parser, success
 from .parsers import (
     fail,
@@ -15,7 +14,6 @@ from .stream import Stream, from_stream
 
 __all__ = [
     "Parser",
-    "generate",
     "success",
     "fail",
     "from_enum",

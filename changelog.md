@@ -7,9 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-### Changes
+### Removed
 
-- Drop support for EOLed Python versions
+- `generate` decorator
+- Support for Python 3.11 and below
 
 ## v0.1.0 - 2024-04-19
 
