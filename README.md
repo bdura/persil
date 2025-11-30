@@ -57,30 +57,15 @@ def parser(
     return CustomType(a, b, c)
 ```
 
-The equivalent code, using `generate` instead (deprecated in Persil):
-
-```python
-@generate
-def parser() -> Generator[Parser, Any, CustomType]:
-    a = yield parser_a
-    b = yield parser_b
-    c = yield parser_c
-
-    return CustomType(a, b, c)
-```
-
-The main issue with `generate` is that intermediate parsers cannot be typed,
-whereas `Stream.__call__` plays nice with modern Python tooling like mypy.
-
 ## Relation with Parsy
 
 First of all, I am not affiliated in any way with the Parsy project.
 
 ### Rationale
 
-Parsy's last commit is from a year ago at the time of writing. Moreover, although the authors
-have started some development to propose a typed version of their library, efforts
-in that area have stalled for two years.
+Parsy's last commit is from a year ago at the time of writing. Moreover,
+although the authors have started some development to propose a typed version
+of their library, efforts in that area have stalled for two years.
 
 ### Compatibility with Parsy
 
@@ -94,6 +79,7 @@ For those coming from Parsy, here are some notable differences:
 - `Err` is its own error: it inherits from `Exception` and can be raised.
 - Persil introduces the `Stream` class, a wrapper around the input
   that can apply parsers sequentially, handling the book-keeping.
+- the `generate` API has been removed
 
 ## Performance tips
 
