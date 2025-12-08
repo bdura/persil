@@ -10,20 +10,22 @@ from .parsers import (
     tag,
     whitespace,
 )
+from .forward import forward_declaration
 from .stream import Stream, from_stream
 
 __all__ = [
     "Parser",
-    "success",
+    "Stream",
     "fail",
+    "forward_declaration",
     "from_enum",
+    "from_stream",
     "index",
     "line_info",
     "regex",
     "regex_groupdict",
+    "string",
+    "success",
     "tag",
     "whitespace",
-    "string",
-    "Stream",
-    "from_stream",
 ]
