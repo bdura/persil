@@ -11,11 +11,21 @@ def noop(x: T) -> T:
 
 @dataclass
 class RowCol:
+    index: int
+
     row: int
     col: int
 
     def __str__(self) -> str:
         return f"{self.row}:{self.col}"
+
+
+@dataclass
+class Span[T]:
+    start: RowCol
+    stop: RowCol
+
+    value: T
 
 
 @singledispatch
@@ -28,7 +38,7 @@ def _(stream: bytes, index: int) -> RowCol:
     row = stream.count(b"\n", 0, index)
     last_nl = stream.rfind(b"\n", 0, index)
     col = index - (last_nl + 1)
-    return RowCol(row, col)
+    return RowCol(index, row, col)
 
 
 @line_info_at.register
@@ -36,7 +46,7 @@ def _(stream: str, index: int) -> RowCol:
     row = stream.count("\n", 0, index)
     last_nl = stream.rfind("\n", 0, index)
     col = index - (last_nl + 1)
-    return RowCol(row, col)
+    return RowCol(index, row, col)
 
 
 def line_info(stream: Sequence, index: int) -> str:
