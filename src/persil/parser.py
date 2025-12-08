@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Callable, Sequence, cast
 
+from persil.utils import Span, line_info_at
+
 from .result import Err, Ok, Result
 
 type Wrapped[In: Sequence, Out] = Callable[[In, int], Result[Out]]
@@ -490,7 +492,23 @@ class Parser[In: Sequence, Out]:
 
         return fail_parser
 
-    def __add__(self, other: "Parser[In, Out]") -> "Parser[In, Out]":
+    def span(self) -> Parser[In, Span[Out]]:
+        """Attach the location span to the result."""
+
+        @Parser
+        def spanned_parser(stream: In, index: int) -> Result[Span[Out]]:
+            start = line_info_at(stream, index)
+            result = self(stream, index)
+            if isinstance(result, Ok):
+                end = line_info_at(stream, result.index)
+                return result.map(
+                    lambda value: Span(start=start, stop=end, value=value)
+                )
+            return result
+
+        return spanned_parser
+
+    def __add__(self, other: Parser[In, Out]) -> Parser[In, Out]:
         @Parser
         def inner(stream: In, index: int) -> Result[Out]:
             res1 = self(stream, index)
