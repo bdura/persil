@@ -1,11 +1,16 @@
+"""A simple JSON parser.
+
+Adapted from <https://parsy.readthedocs.io/en/latest/howto/other_examples.html>
+"""
+
 import json
 from typing import Sequence, cast
 
 import pytest
 
 from persil import regex, string
-from persil.parser import Parser
-from persil.result import Ok
+from persil import forward_declaration
+from persil import Parser
 
 # Utilities
 whitespace = regex(r"\s*")
@@ -45,21 +50,6 @@ quoted = lexeme(
     >> (string_part | string_esc).many().map(lambda s: "".join(s))
     << string('"')
 )
-
-
-class Forward(Parser):
-    def __init__(
-        self,
-    ):
-        self.wrapped_fn = lambda _, index: Ok(None, index)
-
-    def become[In: Sequence, Out](self, parser: Parser[In, Out]) -> Parser[In, Out]:
-        self.wrapped_fn = parser.wrapped_fn
-        return self
-
-
-def forward_declaration() -> Forward:
-    return Forward()
 
 
 type JsonValue = float | bool | str | list[JsonValue] | dict[str, JsonValue] | None
