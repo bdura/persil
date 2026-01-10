@@ -11,6 +11,7 @@ from .parsers import (
     whitespace,
 )
 from .forward import forward_declaration
+from .lazy import lazy
 from .stream import Stream, from_stream
 
 __all__ = [
@@ -21,6 +22,7 @@ __all__ = [
     "from_enum",
     "from_stream",
     "index",
+    "lazy",
     "line_info",
     "regex",
     "regex_groupdict",

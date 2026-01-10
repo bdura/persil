@@ -5,6 +5,7 @@ import pytest
 
 from persil import regex, string
 from persil import Parser
+from persil import lazy
 
 # Utilities
 whitespace = regex(r"\s*")
@@ -26,7 +27,8 @@ comma = lexeme(string(","))
 # Primitives
 true = lexeme(string("true")).result(True)
 false = lexeme(string("false")).result(False)
-null = lexeme(string("null")).result(None)
+boolean = (true | false).desc("boolean")
+null = lexeme(string("null")).result(None).desc("null")
 number = lexeme(regex(r"-?(0|[1-9][0-9]*)([.][0-9]+)?([eE][+-]?[0-9]+)?")).map(float)
 string_part = regex(r'[^"\\]+')
 string_esc = string("\\") >> (
@@ -50,25 +52,26 @@ quoted = lexeme(
 type JsonValue = float | bool | str | list[JsonValue] | dict[str, JsonValue] | None
 
 
-@Parser.lazy
+@lazy
 def json_array() -> Parser[str, list[JsonValue]]:
     return lbrack >> json_value.sep_by(comma) << rbrack
 
 
-@Parser.lazy
+@lazy
 def object_pair() -> Parser[str, tuple[str, JsonValue]]:
     return (quoted << colon).combine(json_value)
 
 
-@Parser.lazy
+@lazy
 def json_object() -> Parser[str, dict[str, JsonValue]]:
     return lbrace >> object_pair.sep_by(comma).map(dict) << rbrace
 
 
-# Data structures
 # Everything
-json_value = quoted | number | json_object | json_array | true | false | null
-json_value = cast(Parser[str, JsonValue], json_value)
+json_value = cast(
+    Parser[str, JsonValue],
+    quoted | number | json_object | json_array | boolean | null,
+)
 
 json_doc = whitespace >> json_value
 
@@ -80,6 +83,7 @@ json_doc = whitespace >> json_value
         None,
         [0, 0, 42],
         dict(a=2, b='test"'),
+        [dict(a_test=[1, 2, 3.4], b='test"', c=dict())],
     ],
 )
 @pytest.mark.parametrize("indent", [0, 2, 3, 5])

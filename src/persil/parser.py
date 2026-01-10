@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Callable, Self, Sequence, cast
+from typing import Any, Callable, Sequence, cast
 
 from persil.utils import Span, line_info_at
 
@@ -544,21 +544,6 @@ class Parser[In: Sequence, Out]:
             return Ok(res2.value, res2.index)
 
         return alt_parser
-
-    @classmethod
-    def lazy(cls, fn: Callable[[], Self]) -> Parser[In, Out]:
-        """Create a parser that delays calling fn() until parse time"""
-
-        wrapped_fn: Wrapped[In, Out] | None = None
-
-        @Parser
-        def lazy_parser(stream: In, index: int) -> Result[Out]:
-            nonlocal wrapped_fn
-            if wrapped_fn is None:
-                wrapped_fn = fn().wrapped_fn
-            return wrapped_fn(stream, index)
-
-        return lazy_parser
 
 
 def success[T](
