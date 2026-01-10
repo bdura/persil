@@ -1,4 +1,5 @@
 from typing import Sequence
+from warnings import deprecated
 
 from .result import Ok
 from .parser import Parser
@@ -15,5 +16,16 @@ class Forward(Parser):
         return self
 
 
+@deprecated("You should use `lazy` instead.")
 def forward_declaration() -> Forward:
+    """Creates a "placeholder" parser, that can be instantiated later on.
+
+    This forward declaration scheme allows the creation of recursive parsers:
+
+    ```python
+    value = forward_declaration()
+    array = left_bracket >> value.sep_by(comma) << right_bracket
+    value.become(string | integer | floating | array)
+    ```
+    """
     return Forward()
