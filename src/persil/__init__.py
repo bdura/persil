@@ -10,7 +10,6 @@ from .parsers import (
     tag,
     whitespace,
 )
-from .forward import forward_declaration
 from .lazy import lazy
 from .stream import Stream, from_stream
 
@@ -18,7 +17,6 @@ __all__ = [
     "Parser",
     "Stream",
     "fail",
-    "forward_declaration",
     "from_enum",
     "from_stream",
     "index",

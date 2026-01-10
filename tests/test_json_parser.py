@@ -9,7 +9,7 @@ from typing import Sequence, cast
 import pytest
 
 from persil import regex, string
-from persil import forward_declaration
+from persil.forward import forward_declaration
 from persil import Parser
 
 # Utilities
