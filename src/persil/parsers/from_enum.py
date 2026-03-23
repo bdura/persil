@@ -4,6 +4,7 @@ from typing import Any, Callable
 from persil import Parser
 from persil.utils import noop
 
+from .outcome import fail
 from .tag import tag
 
 
@@ -12,15 +13,20 @@ def from_enum[E: Enum](
     transform: Callable[[str], Any] = noop,
 ) -> Parser[str, E]:
     """
-    Given a class that is an `enum.Enum` class
-    https://docs.python.org/3/library/enum.html , returns a parser that
+    Given a class that is an [`enum.Enum`] class, return a parser that
     will parse the values (or the string representations of the values)
     and return the corresponding enum item.
+
+    Note
+    ----
+    The enum variants are tested in decreasing order of length.
 
     Parameters
     ----------
     enum_cls
         Enum class to parse
+
+    [`enum.Enum`]: https://docs.python.org/3/library/enum.html
     """
 
     items = sorted(
@@ -28,6 +34,9 @@ def from_enum[E: Enum](
         key=lambda t: len(t[0]),
         reverse=True,
     )
+
+    if not items:
+        return fail("empty enum")
 
     parsers = [tag(key, transform=transform).result(value) for key, value in items]
 
