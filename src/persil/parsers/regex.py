@@ -2,6 +2,7 @@ import re
 
 from persil import Parser
 from persil.result import Err, Ok, Result
+from persil.utils import line_info
 
 
 def regex(
@@ -38,7 +39,7 @@ def regex(
         if match:
             return Ok(match.group(), match.end())
         else:
-            return Err(index, [exp.pattern], stream)
+            return Err(index, [exp.pattern], line_info(stream, index))
 
     return regex_parser
 
@@ -65,6 +66,6 @@ def regex_groupdict(
         if match:
             return Ok(match.groupdict(), match.end())
         else:
-            return Err(index, [exp.pattern], stream)
+            return Err(index, [exp.pattern], line_info(stream, index))
 
     return regex_groupdict_parser

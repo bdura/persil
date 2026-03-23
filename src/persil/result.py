@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Sequence
-
-from persil.utils import line_info
+from typing import Callable
 
 
 @dataclass
@@ -29,15 +27,16 @@ class Ok[T]:
 class Err(Exception):
     index: int
     expected: list[str]
-    stream: Sequence
+    # Pre-formatted location string (e.g. "3:7" or "42"), computed once at
+    # construction time so that Err does not retain a reference to the full
+    # input stream.
+    location: str
 
     def __str__(self) -> str:
-        li = line_info(self.stream, self.index)
-
         if len(self.expected) == 1:
-            return f"expected {self.expected[0]} at {li}"
+            return f"expected {self.expected[0]} at {self.location}"
         else:
-            return f"expected one of {', '.join(self.expected)} at {li}"
+            return f"expected one of {', '.join(self.expected)} at {self.location}"
 
     def ok_or_raise(self):
         """Raise the error directly"""
@@ -50,10 +49,12 @@ class Err(Exception):
         if isinstance(other, Ok):
             return other
 
-        furthest = max(self.index, other.index)
-        expected = self.expected + other.expected
-
-        return Err(furthest, expected, self.stream)
+        # Keep the error that is furthest into the stream; its location string
+        # already corresponds to that index.
+        if self.index >= other.index:
+            return Err(self.index, self.expected + other.expected, self.location)
+        else:
+            return Err(other.index, self.expected + other.expected, other.location)
 
 
 type Result[T] = Ok[T] | Err
