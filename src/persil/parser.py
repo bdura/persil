@@ -386,7 +386,11 @@ class Parser[In: Sequence, Out]:
                 # Enforce the upper bound *before* trying to consume another
                 # item with `self`.
                 if max is not None and times >= max:
-                    return Err(index, [f"at most {max} items"], line_info(stream, index))
+                    return Err.from_stream(
+                        index,
+                        f"at most {max} items",
+                        stream,
+                    )
 
                 # `other` did not match yet — consume one more item with `self`.
                 result = self(stream, index)
@@ -398,12 +402,16 @@ class Parser[In: Sequence, Out]:
                     continue
 
                 if times >= min:
-                    return Err(index, ["did not find other parser"], line_info(stream, index))
-                else:
-                    return Err(
+                    return Err.from_stream(
                         index,
-                        [f"at least {min} items; got {times} item(s)"],
-                        line_info(stream, index),
+                        "did not find other parser",
+                        stream,
+                    )
+                else:
+                    return Err.from_stream(
+                        index,
+                        f"at least {min} items; got {times} item(s)",
+                        stream,
                     )
 
         return until_parser
@@ -446,7 +454,11 @@ class Parser[In: Sequence, Out]:
                     return Ok(values, index)
 
                 if times >= max:
-                    return Err(index, [f"at most {max} items"], line_info(stream, index))
+                    return Err.from_stream(
+                        index,
+                        f"at most {max} items",
+                        stream,
+                    )
 
                 result = self(stream, index)
 
@@ -457,12 +469,16 @@ class Parser[In: Sequence, Out]:
                     continue
 
                 if times >= min:
-                    return Err(index, ["did not find other parser"], line_info(stream, index))
-                else:
-                    return Err(
+                    return Err.from_stream(
                         index,
-                        [f"at least {min} items; got {times} item(s)"],
-                        line_info(stream, index),
+                        "did not find other parser",
+                        stream,
+                    )
+                else:
+                    return Err.from_stream(
+                        index,
+                        f"at least {min} items; got {times} item(s)",
+                        stream,
                     )
 
         return until_and_discard_parser
@@ -517,7 +533,11 @@ class Parser[In: Sequence, Out]:
             result = self(stream, index)
             if isinstance(result, Ok):
                 return result
-            return Err(index, [description], line_info(stream, index))
+            return Err.from_stream(
+                index,
+                description,
+                stream,
+            )
 
         return desc_parser
 
@@ -542,7 +562,11 @@ class Parser[In: Sequence, Out]:
         def fail_parser(stream: In, index: int) -> Result[Err]:
             res = self(stream, index)
             if isinstance(res, Ok):
-                return Err(index, [description], line_info(stream, index))
+                return Err.from_stream(
+                    index,
+                    description,
+                    stream,
+                )
             return Ok(res, index)
 
         return fail_parser
@@ -625,4 +649,8 @@ def eof(stream: Sequence, index: int) -> Result[None]:
     if index >= len(stream):
         return Ok(None, index)
     else:
-        return Err(index, ["EOF"], line_info(stream, index))
+        return Err.from_stream(
+            index,
+            "EOF",
+            stream,
+        )

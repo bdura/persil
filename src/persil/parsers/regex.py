@@ -7,7 +7,7 @@ from persil.utils import line_info
 
 def regex(
     exp: str | re.Pattern[str],
-    flags: int = 0,
+    flags: int | re.RegexFlag = 0,
 ) -> Parser[str, str]:
     """
     Returns a parser that expects the given `exp`, and produces the

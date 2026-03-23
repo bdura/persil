@@ -1,7 +1,8 @@
 from __future__ import annotations
+from persil.utils import line_info
 
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Never, Self, Sequence
 
 
 @dataclass
@@ -27,10 +28,17 @@ class Ok[T]:
 class Err(Exception):
     index: int
     expected: list[str]
-    # Pre-formatted location string (e.g. "3:7" or "42"), computed once at
-    # construction time so that Err does not retain a reference to the full
-    # input stream.
     location: str
+
+    @classmethod
+    def from_stream[T: Sequence](
+        cls,
+        index: int,
+        expected: str,
+        stream: T,
+    ) -> Self:
+        location = line_info(stream, index)
+        return cls(index, [expected], location)
 
     def __str__(self) -> str:
         if len(self.expected) == 1:
@@ -38,11 +46,11 @@ class Err(Exception):
         else:
             return f"expected one of {', '.join(self.expected)} at {self.location}"
 
-    def ok_or_raise(self):
+    def ok_or_raise(self) -> Never:
         """Raise the error directly"""
         raise self
 
-    def map(self, map_function: Callable) -> Err:
+    def map(self, map_function: Callable) -> Self:
         return self
 
     def aggregate[T](self, other: Result[T]) -> Result[T]:
