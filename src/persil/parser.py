@@ -604,7 +604,7 @@ class Parser[In: Sequence, Out]:
 
         return inner
 
-    def __or__[T](
+    def alt[T](
         self,
         other: Parser[In, T],
     ) -> Parser[In, Out | T]:
@@ -618,11 +618,17 @@ class Parser[In: Sequence, Out]:
             res2 = other(stream, index)
 
             if isinstance(res2, Err):
-                return res2
+                return res2.aggregate(res1)
 
             return Ok(res2.value, res2.index)
 
-        return alt_parser
+        return alt_parser  # ty:ignore[invalid-return-type]
+
+    def __or__[T](
+        self,
+        other: Parser[In, T],
+    ) -> Parser[In, Out | T]:
+        return self.alt(other)
 
 
 def success[T](
