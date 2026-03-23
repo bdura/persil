@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Callable, Sequence, cast
+from typing import Any, Callable, Sequence, cast, overload, Literal
 
 from persil.utils import Span, line_info_at
 
@@ -317,18 +317,39 @@ class Parser[In: Sequence, Out]:
 
         return optional_parser
 
+    @overload
     def until[T](
         self,
         other: Parser[In, T],
         min: int = 0,
-        max: int = 999999,
-    ) -> Parser[In, tuple[list[Out], T]]:
+        max: int | None = None,
+        *,
+        return_other: Literal[False] = False,
+    ) -> Parser[In, list[Out]]: ...
+    @overload
+    def until[T](
+        self,
+        other: Parser[In, T],
+        min: int = 0,
+        max: int | None = None,
+        *,
+        return_other: Literal[True] = True,
+    ) -> Parser[In, tuple[list[Out], T]]: ...
+    def until[T](
+        self,
+        other: Parser[In, T],
+        min: int = 0,
+        max: int | None = None,
+        *,
+        return_other: bool = False,
+    ) -> Parser[In, tuple[list[Out], T]] | Parser[In, list[Out]]:
         """
         Returns a parser that expects the initial parser followed by `other`.
         The initial parser is expected at least `min` times and at most `max` times.
 
-        The new parser consumes `other` and returns it as part of an output tuple.
-        If you are looking for a non-consuming parser, checkout `until_and_discard`.
+        The new parser consumes `other`, and returns it as part of an output tuple
+        if `return_other` is set. If you are looking for a non-consuming parser,
+        checkout `until_excluding`.
 
         Parameters
         ----------
@@ -340,26 +361,34 @@ class Parser[In: Sequence, Out]:
         max
             Maximum number of times that the initial parser should match before
             matching `other`
+        return_other
+            Whether to return the result of `other`. If set, the result is a tuple.
         """
 
         @Parser
-        def until_parser(stream: In, index: int) -> Result[tuple[list[Out], T]]:
+        def until_parser(
+            stream: In, index: int
+        ) -> Result[tuple[list[Out], T] | list[Out]]:
             values: list[Out] = []
             times = 0
 
             while True:
-                # try parser first
+                # Check whether `other` matches at the current position.
                 res = other(stream, index)
 
                 if isinstance(res, Ok) and times >= min:
-                    return Ok((values, res.value), index)
+                    # Success: advance past `other` so it is consumed.
+                    if return_other:
+                        return Ok((values, res.value), res.index)
 
-                # exceeded max?
-                if isinstance(res, Ok) and times >= max:
-                    # return failure, it matched parser more than max times
+                    return Ok(values, res.index)
+
+                # Enforce the upper bound *before* trying to consume another
+                # item with `self`.
+                if max is not None and times >= max:
                     return Err(index, [f"at most {max} items"], stream)
 
-                # failed, try parser
+                # `other` did not match yet — consume one more item with `self`.
                 result = self(stream, index)
 
                 if isinstance(result, Ok):
@@ -369,10 +398,8 @@ class Parser[In: Sequence, Out]:
                     continue
 
                 if times >= min:
-                    # return failure, parser is not followed by other
                     return Err(index, ["did not find other parser"], stream)
                 else:
-                    # return failure, it did not match parser at least min times
                     return Err(
                         index,
                         [f"at least {min} items; got {times} item(s)"],
@@ -381,7 +408,7 @@ class Parser[In: Sequence, Out]:
 
         return until_parser
 
-    def until_and_discard[T](
+    def until_excluding[T](
         self,
         other: Parser[In, T],
         min: int = 0,
@@ -406,11 +433,39 @@ class Parser[In: Sequence, Out]:
             matching `other`.
         """
 
-        def discard_next_value(output: tuple[list[Out], T]) -> list[Out]:
-            values, _ = output
-            return values
+        @Parser
+        def until_and_discard_parser(stream: In, index: int) -> Result[list[Out]]:
+            values: list[Out] = []
+            times = 0
 
-        return self.until(other, min=min, max=max).map(discard_next_value)
+            while True:
+                res = other(stream, index)
+
+                if isinstance(res, Ok) and times >= min:
+                    # Do not advance past `other`.
+                    return Ok(values, index)
+
+                if times >= max:
+                    return Err(index, [f"at most {max} items"], stream)
+
+                result = self(stream, index)
+
+                if isinstance(result, Ok):
+                    values.append(result.value)
+                    index = result.index
+                    times += 1
+                    continue
+
+                if times >= min:
+                    return Err(index, ["did not find other parser"], stream)
+                else:
+                    return Err(
+                        index,
+                        [f"at least {min} items; got {times} item(s)"],
+                        stream,
+                    )
+
+        return until_and_discard_parser
 
     def sep_by(
         self,
