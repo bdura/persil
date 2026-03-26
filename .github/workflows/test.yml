@@ -17,9 +17,9 @@ jobs:
 
       - name: Ruff
         run: |
-          uv run --group lint --group test ruff format
-          uv run --group lint --group test ruff check
-          uv run --group lint --group test ty check
+          uv run --all-groups ruff format
+          uv run --all-groups ruff check
+          uv run --all-groups ty check
 
   Test:
     runs-on: ubuntu-latest
