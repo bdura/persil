@@ -29,7 +29,7 @@ def tag[T: (str, bytes)](
 
     @Parser
     def tag_parser(stream: T, index: int) -> Result[T]:
-        matched = stream[index : index + slen]
+        matched = stream[index : index + slen]  # ty:ignore[invalid-argument-type]
         if transform(matched) == transformed_s:
             return Ok(matched, index + slen)
         else:

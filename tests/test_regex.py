@@ -11,13 +11,13 @@ def test_regex_bytes_literal_raises():
     # Bytes patterns are not supported; passing one should raise TypeError
     # at construction time with a helpful message.
     with pytest.raises(TypeError, match="bytes"):
-        regex(b"pattern")
+        regex(b"pattern")  # ty:ignore[invalid-argument-type]
 
 
 def test_regex_compiled_bytes_raises():
     # A pre-compiled bytes pattern is equally unsupported.
     with pytest.raises(TypeError, match="bytes"):
-        regex(re.compile(b"pattern"))
+        regex(re.compile(b"pattern"))  # ty:ignore[invalid-argument-type]
 
 
 def test_regex_string_pattern_compiles():
