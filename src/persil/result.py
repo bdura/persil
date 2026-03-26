@@ -1,9 +1,8 @@
 from __future__ import annotations
+from persil.utils import line_info
 
 from dataclasses import dataclass
-from typing import Callable, Sequence
-
-from persil.utils import line_info
+from typing import Callable, Never, Self, Sequence
 
 
 @dataclass
@@ -29,31 +28,41 @@ class Ok[T]:
 class Err(Exception):
     index: int
     expected: list[str]
-    stream: Sequence
+    location: str
+
+    @classmethod
+    def from_stream[T: Sequence](
+        cls,
+        index: int,
+        expected: str,
+        stream: T,
+    ) -> Self:
+        location = line_info(stream, index)
+        return cls(index, [expected], location)
 
     def __str__(self) -> str:
-        li = line_info(self.stream, self.index)
-
         if len(self.expected) == 1:
-            return f"expected {self.expected[0]} at {li}"
+            return f"expected {self.expected[0]} at {self.location}"
         else:
-            return f"expected one of {', '.join(self.expected)} at {li}"
+            return f"expected one of {', '.join(self.expected)} at {self.location}"
 
-    def ok_or_raise(self):
+    def ok_or_raise(self) -> Never:
         """Raise the error directly"""
         raise self
 
-    def map(self, map_function: Callable) -> Err:
+    def map(self, map_function: Callable) -> Self:
         return self
 
     def aggregate[T](self, other: Result[T]) -> Result[T]:
         if isinstance(other, Ok):
             return other
 
-        furthest = max(self.index, other.index)
-        expected = self.expected + other.expected
-
-        return Err(furthest, expected, self.stream)
+        # Keep the error that is furthest into the stream; its location string
+        # already corresponds to that index.
+        if self.index >= other.index:
+            return Err(self.index, self.expected + other.expected, self.location)
+        else:
+            return Err(other.index, self.expected + other.expected, other.location)
 
 
 type Result[T] = Ok[T] | Err

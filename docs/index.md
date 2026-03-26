@@ -38,24 +38,85 @@ This example should drive home the point that Persil is heavily inspired by Pars
 The only difference in this particular case is type-safety: the Persil version
 knows that `year` is a parser that expects a `str`, and outputs an `int`.
 
-### More complex parsers
+## Advanced use
 
-Parsy uses generator functions as an elegant solution to define complex parser.
+### Parsing more complex object
 
-While you can still use this approach with Persil, you're encouraged to favour
-the `from_streamer` decorator:
+Persil provides a "streaming" API to define more complex parsers.
+This API is meant as a type-safe replacement for Parsy's [generate API][parsy-generate].
+
+A motivating example:
 
 ```python
-@from_streamer
-def parser(
-    stream: Stream[str],
-) -> CustomType:
-    a = stream(parser_a)
-    b = stream(parser_b)
-    c = stream(parser_c)
+import datetime
 
-    return CustomType(a, b, c)
+from persil import from_stream, regex
+
+year = regex("[0-9]{4}").map(int)
+month = regex("(0[0-9]|1[0-2])").map(int)
+day = regex("([012][0-9]|3[01])").map(int)
+
+dash = string("-")
+
+@from_stream
+def date() -> datetime.date:
+    """
+    Parse a date in the format YYYY-MM-DD
+    """
+    y = stream(year)
+    stream(dash)
+    m = stream(month)
+    stream(dash)
+    d = stream(day)
+
+    return datetime.date(y, m, d)
 ```
+
+### Lazy definition
+
+When you have self-referential parsers (for instance when parsing recursive structures),
+you run into a problem: how do you reference a parser from within itself?
+
+Persil's response to that problem is the `lazy` parser.
+
+As a motivating example, let's say you want to parse a nested list of integers:
+
+```
+[-1, [0, 2], [], [[10, -42]]]
+```
+
+The following parser leverages the lazy API to allow parsing arbitrarily-nested
+list of integers:
+
+```python
+from persil import regex, string
+from persil import Parser
+from persil import lazy
+
+whitespace = regex(r"\s*")
+
+lbrack = string("[")
+rbrack = string("]")
+comma = string(",")
+
+number = regex(r"-?\d+").map(int)
+
+type Value = int | list[Value]
+
+@lazy
+def array() -> Parser[str, list[Value]]:
+    return lbrack >> value.sep_by(comma >> whitespace) << rbrack
+
+value = cast(
+    Parser[str, Value],
+    number | array,
+)
+```
+
+Using `lazy` enables breaking the dependency cycle between `array` and `value`,
+by using a function to defer instantiating the parser until `value` is properly defined.
+
+For a more involved example, see the [minimal JSON parser][json-example].
 
 ## Relation with Parsy
 
@@ -133,5 +194,8 @@ def datetime_parser(stream: Stream[str]) -> datetime:
 That way, the lower-level parsers are only defined once.
 
 [Parsy]: https://github.com/python-parsy/parsy
+[parsy-generate]: https://parsy.readthedocs.io/en/latest/ref/generating.html#generating-a-parser
+
+[json-example]: https://github.com/bdura/persil/blob/main/examples/json.py
 
 [^prefer-uv]: You should really prefer a strict dependency manager like `uv`

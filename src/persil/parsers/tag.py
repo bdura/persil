@@ -2,7 +2,7 @@ from typing import Any, Callable
 
 from persil import Parser
 from persil.result import Err, Ok, Result
-from persil.utils import noop
+from persil.utils import line_info, noop
 
 
 def tag[T: (str, bytes)](
@@ -21,7 +21,7 @@ def tag[T: (str, bytes)](
         The expected sequence.
     transform
         An optional transform, applied to the expected value as well as
-        the input stream.
+        the input stream before testing.
     """
 
     slen = len(expected)
@@ -29,10 +29,10 @@ def tag[T: (str, bytes)](
 
     @Parser
     def tag_parser(stream: T, index: int) -> Result[T]:
-        matched = stream[index : index + slen]
+        matched = stream[index : index + slen]  # ty:ignore[invalid-argument-type]
         if transform(matched) == transformed_s:
             return Ok(matched, index + slen)
         else:
-            return Err(index, [str(expected)], stream)
+            return Err(index, [str(expected)], line_info(stream, index))
 
     return tag_parser

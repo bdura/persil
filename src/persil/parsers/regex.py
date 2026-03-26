@@ -2,11 +2,12 @@ import re
 
 from persil import Parser
 from persil.result import Err, Ok, Result
+from persil.utils import line_info
 
 
 def regex(
     exp: str | re.Pattern[str],
-    flags=0,
+    flags: int | re.RegexFlag = 0,
 ) -> Parser[str, str]:
     """
     Returns a parser that expects the given `exp`, and produces the
@@ -19,7 +20,17 @@ def regex(
     entire match.
     """
 
-    if isinstance(exp, (str, bytes)):
+    # Reject bytes patterns at construction time rather than producing a
+    # confusing TypeError deep inside the parser when it is eventually called.
+    if isinstance(exp, bytes) or (
+        isinstance(exp, re.Pattern) and isinstance(exp.pattern, bytes)
+    ):
+        raise TypeError(
+            "regex() does not support bytes patterns; "
+            "use tag() for exact bytes matching."
+        )
+
+    if isinstance(exp, str):
         exp = re.compile(exp, flags)
 
     @Parser
@@ -28,7 +39,7 @@ def regex(
         if match:
             return Ok(match.group(), match.end())
         else:
-            return Err(index, [exp.pattern], stream)
+            return Err(index, [exp.pattern], line_info(stream, index))
 
     return regex_parser
 
@@ -55,6 +66,6 @@ def regex_groupdict(
         if match:
             return Ok(match.groupdict(), match.end())
         else:
-            return Err(index, [exp.pattern], stream)
+            return Err(index, [exp.pattern], line_info(stream, index))
 
     return regex_groupdict_parser

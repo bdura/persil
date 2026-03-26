@@ -1,11 +1,9 @@
 from dataclasses import dataclass
 from functools import singledispatch
-from typing import Sequence, TypeVar
-
-T = TypeVar("T")
+from typing import Sequence
 
 
-def noop(x: T) -> T:
+def noop[T](x: T) -> T:
     return x
 
 

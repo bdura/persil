@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Callable, Sequence, cast
+from typing import Any, Callable, Sequence, cast, overload, Literal
 
 from persil.utils import Span, line_info_at
 
@@ -12,7 +12,8 @@ type Wrapped[In: Sequence, Out] = Callable[[In, int], Result[Out]]
 class Parser[In: Sequence, Out]:
     """
     A Parser is an object that wraps a function whose arguments are
-    a string to be parsed and the index on which to begin parsing.
+    a sequence to be parsed and the index on which to begin parsing.
+
     The function should return either `Result.success(next_index, value)`,
     where the next index is where to continue the parse and the value is
     the yielded value, or `Result.failure(index, expected)`, where expected
@@ -33,7 +34,7 @@ class Parser[In: Sequence, Out]:
         """
         Commit to the current branch by raising the error one is returned.
 
-        Without `cut`, the error is _returned_, not _raised_, and bubles up
+        Without `cut`, the error is _returned_, not _raised_, and bubbles up
         until it is handled by another parser (see `optional` for an example),
         or raised by the `parse(_partial)` top-level method.
         """
@@ -294,7 +295,11 @@ class Parser[In: Sequence, Out]:
         """
         return self.times(n) + self.many()
 
-    def optional(self, default: Out | None = None) -> Parser[In, Out | None]:
+    @overload
+    def optional[T](self, default: T) -> Parser[In, Out | T]: ...
+    @overload
+    def optional[T](self) -> Parser[In, Out | None]: ...
+    def optional[T](self, default: T | None = None) -> Parser[In, Out | T | None]:
         """
         Returns a parser that expects the initial parser zero or once, and maps
         the result to a given default value in the case of no match. If no default
@@ -307,7 +312,7 @@ class Parser[In: Sequence, Out]:
         """
 
         @Parser
-        def optional_parser(stream: In, index: int) -> Result[Out | None]:
+        def optional_parser(stream: In, index: int) -> Result[Out | T | None]:
             res = self(stream, index)
 
             if isinstance(res, Ok):
@@ -315,20 +320,41 @@ class Parser[In: Sequence, Out]:
 
             return Ok(default, index)
 
-        return optional_parser
+        return cast(Parser[In, Out | T | None], optional_parser)
 
+    @overload
     def until[T](
         self,
         other: Parser[In, T],
         min: int = 0,
-        max: int = 999999,
-    ) -> Parser[In, tuple[list[Out], T]]:
+        max: int | None = None,
+        *,
+        return_other: Literal[False] = False,
+    ) -> Parser[In, list[Out]]: ...
+    @overload
+    def until[T](
+        self,
+        other: Parser[In, T],
+        min: int = 0,
+        max: int | None = None,
+        *,
+        return_other: Literal[True] = True,
+    ) -> Parser[In, tuple[list[Out], T]]: ...
+    def until[T](
+        self,
+        other: Parser[In, T],
+        min: int = 0,
+        max: int | None = None,
+        *,
+        return_other: bool = False,
+    ) -> Parser[In, tuple[list[Out], T]] | Parser[In, list[Out]]:
         """
         Returns a parser that expects the initial parser followed by `other`.
         The initial parser is expected at least `min` times and at most `max` times.
 
-        The new parser consumes `other` and returns it as part of an output tuple.
-        If you are looking for a non-consuming parser, checkout `until_and_discard`.
+        The new parser consumes `other`, and returns it as part of an output tuple
+        if `return_other` is set. If you are looking for a non-consuming parser,
+        checkout `until_excluding`.
 
         Parameters
         ----------
@@ -340,26 +366,38 @@ class Parser[In: Sequence, Out]:
         max
             Maximum number of times that the initial parser should match before
             matching `other`
+        return_other
+            Whether to return the result of `other`. If set, the result is a tuple.
         """
 
         @Parser
-        def until_parser(stream: In, index: int) -> Result[tuple[list[Out], T]]:
+        def until_parser(
+            stream: In, index: int
+        ) -> Result[tuple[list[Out], T]] | Result[list[Out]]:
             values: list[Out] = []
             times = 0
 
             while True:
-                # try parser first
+                # Check whether `other` matches at the current position.
                 res = other(stream, index)
 
                 if isinstance(res, Ok) and times >= min:
-                    return Ok((values, res.value), index)
+                    # Success: advance past `other` so it is consumed.
+                    if return_other:
+                        return Ok((values, res.value), res.index)
 
-                # exceeded max?
-                if isinstance(res, Ok) and times >= max:
-                    # return failure, it matched parser more than max times
-                    return Err(index, [f"at most {max} items"], stream)
+                    return Ok(values, res.index)
 
-                # failed, try parser
+                # Enforce the upper bound *before* trying to consume another
+                # item with `self`.
+                if max is not None and times >= max:
+                    return Err.from_stream(
+                        index,
+                        f"at most {max} items",
+                        stream,
+                    )
+
+                # `other` did not match yet — consume one more item with `self`.
                 result = self(stream, index)
 
                 if isinstance(result, Ok):
@@ -369,19 +407,21 @@ class Parser[In: Sequence, Out]:
                     continue
 
                 if times >= min:
-                    # return failure, parser is not followed by other
-                    return Err(index, ["did not find other parser"], stream)
-                else:
-                    # return failure, it did not match parser at least min times
-                    return Err(
+                    return Err.from_stream(
                         index,
-                        [f"at least {min} items; got {times} item(s)"],
+                        "did not find other parser",
+                        stream,
+                    )
+                else:
+                    return Err.from_stream(
+                        index,
+                        f"at least {min} items; got {times} item(s)",
                         stream,
                     )
 
         return until_parser
 
-    def until_and_discard[T](
+    def until_excluding[T](
         self,
         other: Parser[In, T],
         min: int = 0,
@@ -406,11 +446,47 @@ class Parser[In: Sequence, Out]:
             matching `other`.
         """
 
-        def discard_next_value(output: tuple[list[Out], T]) -> list[Out]:
-            values, _ = output
-            return values
+        @Parser
+        def until_and_discard_parser(stream: In, index: int) -> Result[list[Out]]:
+            values: list[Out] = []
+            times = 0
 
-        return self.until(other, min=min, max=max).map(discard_next_value)
+            while True:
+                res = other(stream, index)
+
+                if isinstance(res, Ok) and times >= min:
+                    # Do not advance past `other`.
+                    return Ok(values, index)
+
+                if times >= max:
+                    return Err.from_stream(
+                        index,
+                        f"at most {max} items",
+                        stream,
+                    )
+
+                result = self(stream, index)
+
+                if isinstance(result, Ok):
+                    values.append(result.value)
+                    index = result.index
+                    times += 1
+                    continue
+
+                if times >= min:
+                    return Err.from_stream(
+                        index,
+                        "did not find other parser",
+                        stream,
+                    )
+                else:
+                    return Err.from_stream(
+                        index,
+                        f"at least {min} items; got {times} item(s)",
+                        stream,
+                    )
+
+        return until_and_discard_parser
 
     def sep_by(
         self,
@@ -462,7 +538,11 @@ class Parser[In: Sequence, Out]:
             result = self(stream, index)
             if isinstance(result, Ok):
                 return result
-            return Err(index, [description], stream)
+            return Err.from_stream(
+                index,
+                description,
+                stream,
+            )
 
         return desc_parser
 
@@ -487,7 +567,11 @@ class Parser[In: Sequence, Out]:
         def fail_parser(stream: In, index: int) -> Result[Err]:
             res = self(stream, index)
             if isinstance(res, Ok):
-                return Err(index, [description], stream)
+                return Err.from_stream(
+                    index,
+                    description,
+                    stream,
+                )
             return Ok(res, index)
 
         return fail_parser
@@ -525,12 +609,12 @@ class Parser[In: Sequence, Out]:
 
         return inner
 
-    def __or__[T](
+    def alt[T](
         self,
         other: Parser[In, T],
     ) -> Parser[In, Out | T]:
         @Parser
-        def alt_parser(stream: In, index: int) -> Result[Out | T]:
+        def alt_parser(stream: In, index: int) -> Result[Out] | Result[T]:
             res1 = self(stream, index)
 
             if isinstance(res1, Ok):
@@ -539,11 +623,17 @@ class Parser[In: Sequence, Out]:
             res2 = other(stream, index)
 
             if isinstance(res2, Err):
-                return res2
+                return res2.aggregate(res1)
 
             return Ok(res2.value, res2.index)
 
-        return alt_parser
+        return cast(Parser[In, Out | T], alt_parser)
+
+    def __or__[T](
+        self,
+        other: Parser[In, T],
+    ) -> Parser[In, Out | T]:
+        return self.alt(other)
 
 
 def success[T](
@@ -570,4 +660,8 @@ def eof(stream: Sequence, index: int) -> Result[None]:
     if index >= len(stream):
         return Ok(None, index)
     else:
-        return Err(index, ["EOF"], stream)
+        return Err.from_stream(
+            index,
+            "EOF",
+            stream,
+        )

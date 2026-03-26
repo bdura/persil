@@ -7,17 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `lazy` API to replace `forward`-definition
+- `Parser.alt` takes the responsibility for `Parser.__or__`,
+  which becomes a simple proxy
+
 ### Fixed
 
-- `Parser.skip` (`<<`) was returning the wrong index.
+- `from_enum` now fails on empty enum
+- `Parser.until` would not handle max properly
+- `Parser.skip` (`<<`) was returning the wrong index
 
 ### Changed
 
+- `Parser.until` gets a `return_other` parameter
+- Rename `Parser.until_discard` to `Parser.until_excluding`
 - Simplify `regex` parser, removing type-unsafe groups
 
 ### Removed
 
 - `generate` decorator
+- `forward`-definition API
 - Support for Python 3.11 and below
 
 ## [0.1.0] - 2024-04-19
