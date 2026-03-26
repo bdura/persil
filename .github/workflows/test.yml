@@ -10,7 +10,7 @@ jobs:
   Linting:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: cachix/install-nix-action@v30
       - uses: nicknovitski/nix-develop@v1
         name: nix develop
@@ -19,7 +19,7 @@ jobs:
         run: |
           uv run --group lint ruff format
           uv run --group lint ruff check
-          uv run --group lint mypy
+          uv run --group lint ty check
 
   Test:
     runs-on: ubuntu-latest
@@ -28,7 +28,7 @@ jobs:
       matrix:
         python-version: ["3.12", "3.13", "3.14"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: cachix/install-nix-action@v30
       - uses: nicknovitski/nix-develop@v1
         name: nix develop

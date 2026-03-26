@@ -21,6 +21,8 @@
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             uv
+
+            prek
           ];
         };
       }
