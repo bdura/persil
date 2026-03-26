@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Callable, Sequence, cast, overload, Literal
 
-from persil.utils import Span, line_info, line_info_at
+from persil.utils import Span, line_info_at
 
 from .result import Err, Ok, Result
 
@@ -12,7 +12,8 @@ type Wrapped[In: Sequence, Out] = Callable[[In, int], Result[Out]]
 class Parser[In: Sequence, Out]:
     """
     A Parser is an object that wraps a function whose arguments are
-    a string to be parsed and the index on which to begin parsing.
+    a sequence to be parsed and the index on which to begin parsing.
+
     The function should return either `Result.success(next_index, value)`,
     where the next index is where to continue the parse and the value is
     the yielded value, or `Result.failure(index, expected)`, where expected
@@ -33,7 +34,7 @@ class Parser[In: Sequence, Out]:
         """
         Commit to the current branch by raising the error one is returned.
 
-        Without `cut`, the error is _returned_, not _raised_, and bubles up
+        Without `cut`, the error is _returned_, not _raised_, and bubbles up
         until it is handled by another parser (see `optional` for an example),
         or raised by the `parse(_partial)` top-level method.
         """
@@ -294,7 +295,11 @@ class Parser[In: Sequence, Out]:
         """
         return self.times(n) + self.many()
 
-    def optional(self, default: Out | None = None) -> Parser[In, Out | None]:
+    @overload
+    def optional[T](self, default: T) -> Parser[In, Out | T]: ...
+    @overload
+    def optional[T](self) -> Parser[In, Out | None]: ...
+    def optional[T](self, default: T | None = None) -> Parser[In, Out | T | None]:
         """
         Returns a parser that expects the initial parser zero or once, and maps
         the result to a given default value in the case of no match. If no default
@@ -307,7 +312,7 @@ class Parser[In: Sequence, Out]:
         """
 
         @Parser
-        def optional_parser(stream: In, index: int) -> Result[Out | None]:
+        def optional_parser(stream: In, index: int) -> Result[Out | T | None]:
             res = self(stream, index)
 
             if isinstance(res, Ok):
@@ -315,7 +320,7 @@ class Parser[In: Sequence, Out]:
 
             return Ok(default, index)
 
-        return optional_parser
+        return cast(Parser[In, Out | T | None], optional_parser)
 
     @overload
     def until[T](
@@ -368,7 +373,7 @@ class Parser[In: Sequence, Out]:
         @Parser
         def until_parser(
             stream: In, index: int
-        ) -> Result[tuple[list[Out], T] | list[Out]]:
+        ) -> Result[tuple[list[Out], T]] | Result[list[Out]]:
             values: list[Out] = []
             times = 0
 
@@ -609,7 +614,7 @@ class Parser[In: Sequence, Out]:
         other: Parser[In, T],
     ) -> Parser[In, Out | T]:
         @Parser
-        def alt_parser(stream: In, index: int) -> Result[Out | T]:
+        def alt_parser(stream: In, index: int) -> Result[Out] | Result[T]:
             res1 = self(stream, index)
 
             if isinstance(res1, Ok):
@@ -622,7 +627,7 @@ class Parser[In: Sequence, Out]:
 
             return Ok(res2.value, res2.index)
 
-        return alt_parser  # ty:ignore[invalid-return-type]
+        return cast(Parser[In, Out | T], alt_parser)
 
     def __or__[T](
         self,
