@@ -1,4 +1,7 @@
-"""Minimal TOML parser.
+"""TOML AST parser with source locations.
+
+Parses TOML into an AST where every key and value carries a Span (start/stop
+RowCol), suitable for use in an LSP.
 
 Supports: bare keys, dotted keys, basic/literal strings, integers, floats,
 booleans, arrays, inline tables, and [table] / [[array-of-tables]] headers.
@@ -8,11 +11,49 @@ Not supported: multi-line strings, datetime types, unicode escapes beyond
 """
 
 import sys
+from dataclasses import dataclass
 from typing import Any, Sequence
 
 from rich import print as rprint
 
 from persil import Parser, lazy, regex, string
+from persil.parser import eof
+from persil.stream import SoftError, Stream, from_stream
+from persil.utils import Span
+
+# ==============================================================================
+# AST node types
+# ==============================================================================
+
+type TomlValue = int | float | bool | str | list[TomlValue] | dict[str, TomlValue]
+
+
+@dataclass
+class TomlKeyValue:
+    key: Span[list[str]]
+    value: Span[TomlValue]
+
+
+@dataclass
+class TomlTableHeader:
+    key: Span[list[str]]
+
+
+@dataclass
+class TomlArrayTableHeader:
+    key: Span[list[str]]
+
+
+@dataclass
+class TomlTable:
+    header: TomlTableHeader | TomlArrayTableHeader | None
+    entries: list[TomlKeyValue]
+
+
+@dataclass
+class TomlDocument:
+    tables: list[TomlTable]
+
 
 # ==============================================================================
 # Whitespace & comments
@@ -24,14 +65,11 @@ ws = regex(r"[ \t]*")
 # A comment runs from '#' to end of line.
 comment = regex(r"#[^\n]*")
 
-# Newline: optional comment then line ending.
-newline = ws >> comment.optional() >> regex(r"\n")
+# A single newline, possibly preceded by inline whitespace and a comment.
+blank_line = ws >> comment.optional() >> regex(r"\n")
 
-# One or more blank/comment lines.
-newlines = newline.at_least(1)
-
-# Optional blank lines (used between entries).
-skip_newlines = newline.many()
+# Optional blank lines (used between array elements).
+skip_newlines = blank_line.many()
 
 
 def lexeme[In: Sequence, Out](p: Parser[In, Out]) -> Parser[In, Out]:
@@ -131,8 +169,6 @@ dotted_key = simple_key.sep_by(dot, min=1).desc("key")
 # Compound values (arrays and inline tables)
 # ==============================================================================
 
-type TomlValue = int | float | bool | str | list[TomlValue] | dict[str, TomlValue]
-
 
 @lazy
 def toml_array() -> Parser[str, list[TomlValue]]:
@@ -163,11 +199,76 @@ toml_value = (
 
 
 # ==============================================================================
-# Top-level document structure
+# Line-level parsers (single-pass, consuming trailing newline or EOF)
 # ==============================================================================
 
-# A key-value pair on its own line: `key = value`.
-key_value = (dotted_key << equals) & toml_value
+# Trailing content after a meaningful line: optional comment, then newline or EOF.
+line_end = ws >> comment.optional() >> (string("\n") | eof)
+
+# [table] header line.
+table_header_line = (
+    ws >> string("[") >> ws >> dotted_key.span() << ws << string("]") << line_end
+).map(TomlTableHeader)
+
+# [[array-of-tables]] header line. Must be tried before table_header_line
+# because `[` is a prefix of `[[`.
+array_table_header_line = (
+    ws >> string("[[") >> ws >> dotted_key.span() << ws << string("]]") << line_end
+).map(TomlArrayTableHeader)
+
+# Key = value line.
+kv_line = ((ws >> dotted_key.span() << equals) & (toml_value.span() << line_end)).map(
+    lambda pair: TomlKeyValue(key=pair[0], value=pair[1])
+)
+
+# A single document entry: a header or a key-value pair.
+entry = array_table_header_line | table_header_line | kv_line
+
+
+# ==============================================================================
+# Full document parser
+# ==============================================================================
+
+
+@from_stream("TOML document")
+def toml_document(stream: Stream[str]) -> TomlDocument:
+    tables: list[TomlTable] = []
+    current_header: TomlTableHeader | TomlArrayTableHeader | None = None
+    current_entries: list[TomlKeyValue] = []
+
+    while True:
+        # Skip blank/comment-only lines.
+        try:
+            while True:
+                stream.apply(blank_line)
+        except SoftError:
+            pass
+
+        # Check for end of input.
+        try:
+            stream.apply(eof)
+            break
+        except SoftError:
+            pass
+
+        # Parse the next entry (header or key-value pair).
+        item = stream.apply(entry)
+        if isinstance(item, (TomlTableHeader, TomlArrayTableHeader)):
+            # Flush the current table and start a new one.
+            tables.append(TomlTable(header=current_header, entries=current_entries))
+            current_header = item
+            current_entries = []
+        else:
+            current_entries.append(item)
+
+    # Flush the final table.
+    tables.append(TomlTable(header=current_header, entries=current_entries))
+    return TomlDocument(tables=tables)
+
+
+# ==============================================================================
+# Resolution: AST -> nested dict
+# ==============================================================================
 
 
 def set_nested(root: dict[str, Any], keys: list[str], value: Any) -> None:
@@ -179,63 +280,43 @@ def set_nested(root: dict[str, Any], keys: list[str], value: Any) -> None:
     root[keys[-1]] = value
 
 
-def parse_toml(text: str) -> dict[str, Any]:
-    """Parse a TOML document string into a nested dict.
-
-    We parse individual lines/sections rather than building one giant parser
-    for the whole document, because TOML's stateful table-header semantics
-    (where `[table]` changes the "current table" for subsequent key-value
-    pairs) don't map cleanly onto pure parser combinators.
-    """
+def resolve(doc: TomlDocument) -> dict[str, Any]:
+    """Convert a TomlDocument AST into a plain nested dict, dropping spans."""
     root: dict[str, Any] = {}
-    current_table: dict[str, Any] = root
 
-    for line in text.split("\n"):
-        line = line.strip()
+    for table in doc.tables:
+        # Determine the target table for this section's key-value pairs.
+        target = root
+        if table.header is not None:
+            keys = table.header.key.value
+            if isinstance(table.header, TomlArrayTableHeader):
+                # Navigate to the parent, creating intermediate tables as needed.
+                for key in keys[:-1]:
+                    if key not in target:
+                        target[key] = {}
+                    target = target[key]
+                # Append a new dict to the array.
+                last = keys[-1]
+                if last not in target:
+                    target[last] = []
+                target[last].append({})
+                target = target[last][-1]
+            else:
+                # Navigate/create the nested table.
+                for key in keys:
+                    if key not in target:
+                        target[key] = {}
+                    target = target[key]
 
-        # Skip blank lines and comments.
-        if not line or line.startswith("#"):
-            continue
-
-        # [[array-of-tables]] header.
-        if line.startswith("[["):
-            header = line.strip("[] \t")
-            keys = dotted_key.parse(header)
-            # Navigate to the parent, creating tables as needed.
-            target = root
-            for key in keys[:-1]:
-                if key not in target:
-                    target[key] = {}
-                target = target[key]
-            # Append a new table to the array.
-            last = keys[-1]
-            if last not in target:
-                target[last] = []
-            target[last].append({})
-            current_table = target[last][-1]
-            continue
-
-        # [table] header.
-        if line.startswith("["):
-            header = line.strip("[] \t")
-            keys = dotted_key.parse(header)
-            # Navigate/create the nested table.
-            target = root
-            for key in keys:
-                if key not in target:
-                    target[key] = {}
-                target = target[key]
-            current_table = target
-            continue
-
-        # Key-value pair.
-        (keys, value) = key_value.parse(line)
-        set_nested(current_table, keys, value)
+        for entry in table.entries:
+            set_nested(target, entry.key.value, entry.value.value)
 
     return root
 
 
 if __name__ == "__main__":
     text = sys.stdin.read()
-    result = parse_toml(text)
-    rprint(result)
+    doc = toml_document.parse(text)
+    rprint(doc)
+    print("---")
+    rprint(resolve(doc))
