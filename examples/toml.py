@@ -203,7 +203,7 @@ toml_value = (
 # ==============================================================================
 
 # Trailing content after a meaningful line: optional comment, then newline or EOF.
-line_end = ws >> comment.optional() >> (string("\n") | eof)
+line_end = ws >> comment.optional() >> (string("\n") | eof())
 
 # [table] header line.
 table_header_line = (
@@ -246,7 +246,7 @@ def toml_document(stream: Stream[str]) -> TomlDocument:
 
         # Check for end of input.
         try:
-            stream.apply(eof)
+            stream.apply(eof())
             break
         except SoftError:
             pass
