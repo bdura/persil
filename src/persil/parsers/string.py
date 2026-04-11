@@ -1,7 +1,6 @@
 from typing import Callable
 
 from persil.parser import Parser
-from persil.utils import noop
 
 from .regex import regex
 from .tag import tag
@@ -9,7 +8,7 @@ from .tag import tag
 
 def string(
     expected: str,
-    transform: Callable[[str], str] = noop,
+    transform: Callable[[str], str] | None = None,
 ) -> Parser[str, str]:
     """
     Returns a parser that expects `expected` and returns the matched value.

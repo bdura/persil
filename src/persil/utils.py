@@ -3,10 +3,6 @@ from functools import singledispatch
 from typing import Sequence
 
 
-def noop[T](x: T) -> T:
-    return x
-
-
 @dataclass
 class RowCol:
     index: int
