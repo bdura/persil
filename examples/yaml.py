@@ -156,9 +156,9 @@ def flow_lexeme[In: Sequence, Out](p: Parser[In, Out]) -> Parser[In, Out]:
 flow_comma = flow_lexeme(string(","))
 flow_colon = flow_lexeme(string(":"))
 
-# Flow scalars: same as inline but also allow plain scalars with restricted
-# character set (no commas, colons, brackets, braces).
-flow_plain_scalar = regex(r"[^\n\[\]{},:# \t][^\n\[\]{},:#]*").map(str.strip)
+# A plain scalar in flow context: no commas, colons, brackets, braces.
+_flow_plain_re = r"[^\n\[\]{},:# \t][^\n\[\]{},:#]*"
+flow_plain_scalar = regex(_flow_plain_re).map(str.strip)
 flow_scalar = (
     yaml_null
     | yaml_boolean
@@ -192,9 +192,7 @@ def flow_sequence() -> Parser[str, list[YamlValue]]:
 @lazy
 def flow_pair() -> Parser[str, tuple[str, YamlValue]]:
     key = flow_lexeme(
-        double_quoted
-        | single_quoted
-        | regex(r"[^\n\[\]{},:# \t][^\n\[\]{},:#]*").map(str.strip)
+        double_quoted | single_quoted | regex(_flow_plain_re).map(str.strip)
     )
     return (key << flow_colon) & flow_value
 
@@ -241,6 +239,14 @@ def at_eof(stream: Stream[str]) -> bool:
         return False
 
 
+def _current_line(stream: Stream[str]) -> str:
+    """Return the text from the current position to the next newline (or EOF)."""
+    nl = stream.inner.find("\n", stream.index)
+    if nl == -1:
+        return stream.inner[stream.index :]
+    return stream.inner[stream.index : nl]
+
+
 def peek_indent(stream: Stream[str]) -> int:
     """Return the column of the next non-blank content without consuming it.
 
@@ -259,38 +265,18 @@ def peek_indent(stream: Stream[str]) -> int:
     return col
 
 
-def consume_indent(stream: Stream[str]) -> int:
-    """Consume leading whitespace and return the column position reached.
-
-    This must be called at the start of a line.
-    """
-    stream.apply(ws)
-    return stream.apply(line_info()).col
+# Inline value parser: tries delimited constructs first (flow collections
+# and quoted strings), then falls back to a plain scalar that is re-parsed
+# as a typed value (null, bool, int, float) or left as a string.
+_delimited_inline = (flow_sequence | flow_mapping | double_quoted | single_quoted).desc(
+    "inline value"
+)
 
 
 def parse_inline_value(stream: Stream[str]) -> YamlValue:
-    """Parse a value that appears on the same line (after `: ` or `- `).
-
-    Tries flow constructs and quoted strings first (these have unambiguous
-    delimiters). For unquoted values, grabs the full plain text and then
-    attempts to interpret it as a typed scalar (null, bool, int, float).
-    """
-    # Flow constructs have unambiguous start characters.
+    """Parse a value that appears on the same line (after `: ` or `- `)."""
     try:
-        return stream.apply(flow_sequence)
-    except SoftError:
-        pass
-    try:
-        return stream.apply(flow_mapping)
-    except SoftError:
-        pass
-    # Quoted strings.
-    try:
-        return stream.apply(double_quoted)
-    except SoftError:
-        pass
-    try:
-        return stream.apply(single_quoted)
+        return stream.apply(_delimited_inline)
     except SoftError:
         pass
     # Plain scalar: grab the whole text, then try to parse as a typed value.
@@ -333,7 +319,7 @@ def parse_value(stream: Stream[str], parent_indent: int) -> YamlValue:
     # Peek at the stripped line content to decide the block type.
     saved = stream.index
     stream.apply(ws)
-    rest_of_line = stream.inner[stream.index :].split("\n", 1)[0]
+    rest_of_line = _current_line(stream)
     stream.index = saved
 
     # Block sequence: line starts with `- `.
@@ -394,10 +380,10 @@ def parse_block_sequence(stream: Stream[str], expected_indent: int) -> list[Yaml
         # Peek at the content after indentation.
         saved = stream.index
         stream.apply(ws)
-        rest = stream.inner[stream.index :]
+        rest = _current_line(stream)
         stream.index = saved
 
-        if not (rest.startswith("- ") or rest.startswith("-\n") or rest == "-"):
+        if not (rest.startswith("- ") or rest == "-"):
             break
 
         # Consume the indentation and `- `.
@@ -428,7 +414,7 @@ def parse_block_sequence(stream: Stream[str], expected_indent: int) -> list[Yaml
         # Content on the same line after `- `.
         # It could be a nested mapping key or a scalar.
         inner_col = stream.apply(line_info()).col
-        rest_of_line = stream.inner[stream.index :].split("\n", 1)[0]
+        rest_of_line = _current_line(stream)
         if _looks_like_mapping_key(rest_of_line):
             # Nested mapping starting on the same line as `- `.
             entries = parse_block_mapping(stream, inner_col)

@@ -138,7 +138,7 @@ ESCAPE_MAP = {
     "t": "\t",
 }
 basic_str_char = regex(r'[^"\\]+')
-basic_str_esc = string("\\") >> regex(r'[\\/"bfnrt]|u[0-9a-fA-F]{4}').map(
+basic_str_esc = string("\\") >> regex(r"[\\\"bfnrt]|u[0-9a-fA-F]{4}").map(
     lambda s: ESCAPE_MAP.get(s, chr(int(s[1:], 16)))
 )
 basic_string = (
