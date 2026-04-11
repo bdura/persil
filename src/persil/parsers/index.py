@@ -1,17 +1,29 @@
-from typing import Any
+from typing import Sequence, cast
 
 from persil import Parser
 from persil.result import Ok, Result
 from persil.utils import RowCol, line_info_at
 
 
-@Parser
-def index(stream: Any, index: int) -> Result[int]:
-    """Return the current index"""
-    return Ok(index, index)
+def index[In: Sequence]() -> Parser[In, int]:
+    """
+    A parser that returns the current index
+    """
+
+    @Parser
+    def _index(stream: Sequence, index: int) -> Result[int]:
+        return Ok(index, index)
+
+    return cast(Parser[In, int], _index)
 
 
-@Parser
-def line_info[S: (str, bytes)](stream: S, index: int) -> Result[RowCol]:
-    """Return the line information (row, col)"""
-    return Ok(line_info_at(stream, index), index)
+def line_info[In: (str, bytes)]() -> Parser[In, int]:
+    """
+    A parser that returns the current index
+    """
+
+    @Parser
+    def _line_info(stream: Sequence, index: int) -> Result[RowCol]:
+        return Ok(line_info_at(stream, index), index)
+
+    return cast(Parser[In, int], _line_info)

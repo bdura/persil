@@ -161,7 +161,7 @@ class Parser[In: Sequence, Out]:
         stream
             Input to match the parser against.
         """
-        (result, _) = (self << eof).parse_partial(stream)
+        (result, _) = (self << eof()).parse_partial(stream)
         return result
 
     def parse_partial(
@@ -269,7 +269,23 @@ class Parser[In: Sequence, Out]:
         Returns a parser that expects the initial parser 0 or more times, and
         produces a list of the results.
         """
-        return self.times(0, 9999999)
+
+        @Parser
+        def many_parser(stream: In, index: int) -> Result[list[Out]]:
+            values = []
+            result = None
+
+            while True:
+                result = self(stream, index)
+                if isinstance(result, Ok):
+                    values.append(result.value)
+                    index = result.index
+                else:
+                    return Ok(values, index)
+
+            return Ok(values, index)
+
+        return many_parser
 
     def at_most(self, n: int) -> Parser[In, list[Out]]:
         """
@@ -651,17 +667,16 @@ def success[T](
     return Parser(lambda _, index: Ok(value, index))
 
 
-@Parser
-def eof(stream: Sequence, index: int) -> Result[None]:
+def eof[In: Sequence]() -> Parser[In, None]:
     """
     A parser that only succeeds if the end of the stream has been reached.
     """
 
-    if index >= len(stream):
-        return Ok(None, index)
-    else:
-        return Err.from_stream(
-            index,
-            "EOF",
-            stream,
-        )
+    @Parser
+    def _eof(stream: Sequence, index: int) -> Result[None]:
+        if index >= len(stream):
+            return Ok(None, index)
+        else:
+            return Err.from_stream(index, "EOF", stream)
+
+    return cast(Parser[In, None], _eof)

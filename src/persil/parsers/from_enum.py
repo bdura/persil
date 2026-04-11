@@ -2,7 +2,6 @@ from enum import Enum
 from typing import Any, Callable
 
 from persil import Parser
-from persil.utils import noop
 
 from .outcome import fail
 from .tag import tag
@@ -10,7 +9,7 @@ from .tag import tag
 
 def from_enum[E: Enum](
     enum_cls: type[E],
-    transform: Callable[[str], Any] = noop,
+    transform: Callable[[str], Any] | None = None,
 ) -> Parser[str, E]:
     """
     Given a class that is an [`enum.Enum`] class, return a parser that

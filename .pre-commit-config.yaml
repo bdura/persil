@@ -26,3 +26,4 @@ repos:
         name: ty check
         entry: uv run --group lint ty check
         language: python
+        types_or: [python, pyi]

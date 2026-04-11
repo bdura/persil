@@ -55,12 +55,21 @@ def from_stream[In: Sequence, Out](
 ) -> Parser[In, Out]: ...
 @overload
 def from_stream[In: Sequence, Out](
-    func: str,
+    func: Callable[[Stream[In]], Out],
+    *,
+    desc: str,
+) -> Parser[In, Out]: ...
+@overload
+def from_stream[In: Sequence, Out](
+    *,
+    desc: str,
 ) -> Callable[[Callable[[Stream[In]], Out]], Parser[In, Out]]: ...
 
 
 def from_stream[In: Sequence, Out](
-    func: str | Callable[[Stream[In]], Out],
+    func: Callable[[Stream[In]], Out] | None = None,
+    *,
+    desc: str | None = None,
 ) -> (
     Parser[In, Out]
     | Callable[
@@ -68,7 +77,27 @@ def from_stream[In: Sequence, Out](
         Parser[In, Out],
     ]
 ):
-    if isinstance(func, str):
-        return lambda f: _from_stream(f).desc(func)
-    else:
-        return _from_stream(func)
+    """Create a parser from a function that operates on a :class:`Stream`.
+
+    Can be used as a bare decorator, a decorator with a description, or
+    called directly with a function and an optional description.
+
+    Examples::
+
+        @from_stream
+        def my_parser(stream: Stream[str]) -> int: ...
+
+        @from_stream(desc="my parser")
+        def my_parser(stream: Stream[str]) -> int: ...
+
+        parser = from_stream(my_func, desc="my parser")
+    """
+
+    def _wrap(f: Callable[[Stream[In]], Out]) -> Parser[In, Out]:
+        p = _from_stream(f)
+        return p.desc(desc) if desc is not None else p
+
+    if func is not None:
+        return _wrap(func)
+
+    return _wrap
