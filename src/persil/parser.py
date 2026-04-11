@@ -269,7 +269,23 @@ class Parser[In: Sequence, Out]:
         Returns a parser that expects the initial parser 0 or more times, and
         produces a list of the results.
         """
-        return self.times(0, 9999999)
+
+        @Parser
+        def many_parser(stream: In, index: int) -> Result[list[Out]]:
+            values = []
+            result = None
+
+            while True:
+                result = self(stream, index)
+                if isinstance(result, Ok):
+                    values.append(result.value)
+                    index = result.index
+                else:
+                    return Ok(values, index)
+
+            return Ok(values, index)
+
+        return many_parser
 
     def at_most(self, n: int) -> Parser[In, list[Out]]:
         """
