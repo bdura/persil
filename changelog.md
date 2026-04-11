@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning].
 ### Added
 
 - `lazy` API to replace `forward`-definition
+- `Parser.span` method to attach location spans to results
+- `RowCol.index` field
 - `Parser.alt` takes the responsibility for `Parser.__or__`,
   which becomes a simple proxy
 
@@ -18,9 +20,17 @@ and this project adheres to [Semantic Versioning].
 - `from_enum` now fails on empty enum
 - `Parser.until` would not handle max properly
 - `Parser.skip` (`<<`) was returning the wrong index
+- `many` parser no longer relies on a magic upper-bound value
+- Better `eof`, `index` and `line_info` typing
 
 ### Changed
 
+- **Breaking:** `eof`, `index` and `line_info` are now functions returning
+  parsers instead of bare parser instances
+- **Breaking:** `from_stream` `desc` parameter is now keyword-only
+- **Breaking:** `transform` parameter in `tag`, `string`, and
+  `from_enum` defaults to `None` instead of `noop`; `tag` skips the
+  transform call entirely when none is provided
 - `Parser.until` gets a `return_other` parameter
 - Rename `Parser.until_discard` to `Parser.until_excluding`
 - Simplify `regex` parser, removing type-unsafe groups
@@ -29,6 +39,7 @@ and this project adheres to [Semantic Versioning].
 
 - `generate` decorator
 - `forward`-definition API
+- `noop` utility function
 - Support for Python 3.11 and below
 
 ## [0.1.0] - 2024-04-19
