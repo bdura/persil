@@ -5,6 +5,7 @@ from hypothesis import given, strategies as st
 
 from persil import regex
 from persil.result import Err
+from persil.parsers.regex import regex_groupdict
 
 
 def test_regex_bytes_literal_raises():
@@ -54,3 +55,14 @@ def test_regex_partial_parse(valid: str, suffix: str):
     result, remainder = regex(r"[a-z]+").parse_partial(valid + suffix)
     assert result == valid
     assert remainder == suffix
+
+
+def test_regex_groupdict_success():
+    parser = regex_groupdict(r"(?P<year>\d{4})-(?P<month>\d{2})")
+    assert parser.parse("2026-04") == {"year": "2026", "month": "04"}
+
+
+def test_regex_groupdict_failure():
+    parser = regex_groupdict(r"(?P<year>\d{4})-(?P<month>\d{2})")
+    with pytest.raises(Err):
+        parser.parse("not-a-date")
