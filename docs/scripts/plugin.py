@@ -5,7 +5,7 @@ from mkdocs.structure.files import File, Files
 from mkdocs.structure.pages import Page
 
 ADD_TO_DOCS = [
-    "changelog.md",
+    "CHANGELOG.md",
 ]
 VIRTUAL_FILES = dict[str, str]()
 
