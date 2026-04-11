@@ -230,7 +230,7 @@ entry = array_table_header_line | table_header_line | kv_line
 # ==============================================================================
 
 
-@from_stream("TOML document")
+@from_stream(desc="TOML document")
 def toml_document(stream: Stream[str]) -> TomlDocument:
     tables: list[TomlTable] = []
     current_header: TomlTableHeader | TomlArrayTableHeader | None = None

@@ -34,7 +34,16 @@ class YamlKeyValue:
 
 
 # Mappings are stored as list[YamlKeyValue] to preserve key spans for the LSP.
-type YamlValue = int | float | bool | str | list[YamlValue] | list[YamlKeyValue] | None
+type YamlValue = (
+    int
+    | float
+    | bool
+    | str
+    | list[YamlValue]
+    | list[YamlKeyValue]
+    | dict[str, YamlValue]
+    | None
+)
 
 
 @dataclass
@@ -245,7 +254,7 @@ def peek_indent(stream: Stream[str]) -> int:
         return -1
     # Consume leading whitespace to find the column of the first non-blank char.
     stream.apply(ws)
-    col = stream.apply(line_info).col
+    col = stream.apply(line_info()).col
     stream.index = saved
     return col
 
@@ -256,7 +265,7 @@ def consume_indent(stream: Stream[str]) -> int:
     This must be called at the start of a line.
     """
     stream.apply(ws)
-    return stream.apply(line_info).col
+    return stream.apply(line_info()).col
 
 
 def parse_inline_value(stream: Stream[str]) -> YamlValue:
@@ -418,7 +427,7 @@ def parse_block_sequence(stream: Stream[str], expected_indent: int) -> list[Yaml
 
         # Content on the same line after `- `.
         # It could be a nested mapping key or a scalar.
-        inner_col = stream.apply(line_info).col
+        inner_col = stream.apply(line_info()).col
         rest_of_line = stream.inner[stream.index :].split("\n", 1)[0]
         if _looks_like_mapping_key(rest_of_line):
             # Nested mapping starting on the same line as `- `.
@@ -494,7 +503,7 @@ doc_start = string("---") << line_end
 doc_end = string("...") << line_end
 
 
-@from_stream("YAML stream")
+@from_stream(desc="YAML stream")
 def yaml_stream(stream: Stream[str]) -> YamlStream:
     documents: list[YamlDocument] = []
 
@@ -541,7 +550,9 @@ def _unwrap(val: YamlValue) -> Any:
     if isinstance(val, list):
         # A list of YamlKeyValue represents a mapping; a plain list is a sequence.
         if val and isinstance(val[0], YamlKeyValue):
+            val = cast(list[YamlKeyValue], val)
             return {kv.key.value: _unwrap(kv.value.value) for kv in val}
+        val = cast(list[YamlValue], val)
         return [_unwrap(v) for v in val]
     return val
 
