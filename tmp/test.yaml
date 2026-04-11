@@ -1,0 +1,38 @@
+# Top-level mapping
+name: John Doe
+age: 30
+active: true
+score: 3.14
+nothing: null
+
+# Nested mapping
+address:
+  street: 123 Main St
+  city: Springfield
+  zip: 62704
+
+# Sequences
+tags:
+  - python
+  - yaml
+  - parser
+
+# Nested sequence of mappings
+people:
+  - name: Alice
+    age: 25
+  - name: Bob
+    age: 32
+
+# Flow constructs
+colors: [red, green, blue]
+point: {x: 1, y: 2, z: 3}
+
+# Quoted strings
+greeting: "hello\nworld"
+literal: 'no escapes here'
+
+# Special values
+empty_key:
+tilde: ~
+hex: 0xFF

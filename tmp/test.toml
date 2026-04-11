@@ -1,0 +1,41 @@
+# Top-level keys
+title = "TOML Example"
+enabled = true
+pi = 3.14159
+count = 42
+hex = 0xDEAD_BEEF
+
+# A table
+[owner]
+name = 'Tom Preston-Werner'
+score = 1e6
+
+# Dotted keys
+[database]
+server = "192.168.1.1"
+ports = [8000, 8001, 8002]
+connection_max = 5000
+enabled = true
+
+# Nested table
+[servers.alpha]
+ip = "10.0.0.1"
+dc = "eqdc10"
+
+[servers.beta]
+ip = "10.0.0.2"
+dc = "eqdc10"
+
+# Inline table
+[product]
+name = "Hammer"
+sku = 738594937
+color = "gray"
+metadata = {weight = 12, unit = "kg"}
+
+# Array of tables
+[[fruits]]
+name = "apple"
+
+[[fruits]]
+name = "banana"
