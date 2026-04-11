@@ -667,16 +667,17 @@ def success[T](
     return Parser(lambda _, index: Ok(value, index))
 
 
+@Parser
+def _eof(stream: Sequence, index: int) -> Result[None]:
+    if index >= len(stream):
+        return Ok(None, index)
+    else:
+        return Err.from_stream(index, "EOF", stream)
+
+
 def eof[In: Sequence]() -> Parser[In, None]:
     """
     A parser that only succeeds if the end of the stream has been reached.
     """
-
-    @Parser
-    def _eof(stream: Sequence, index: int) -> Result[None]:
-        if index >= len(stream):
-            return Ok(None, index)
-        else:
-            return Err.from_stream(index, "EOF", stream)
 
     return cast(Parser[In, None], _eof)
