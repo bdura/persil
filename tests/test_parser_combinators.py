@@ -149,7 +149,7 @@ def test_add_concatenates_lists(n: int, m: int):
 
 def test_eof_not_at_end():
     with pytest.raises(Err):
-        eof.parse_partial("leftover")
+        eof().parse_partial("leftover")
 
 
 @given(n=st.integers(min_value=0, max_value=1000))

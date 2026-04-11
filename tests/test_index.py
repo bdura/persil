@@ -9,6 +9,6 @@ def test_index():
 
 
 def test_line_info_parser():
-    parser = string("hello\n") >> line_info
+    parser = string("hello\n") >> line_info()
     result = parser.parse("hello\n")
     assert result == RowCol(index=6, row=1, col=0)
