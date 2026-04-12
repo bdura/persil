@@ -19,7 +19,7 @@ from rich import print as rprint
 
 from persil import Parser, lazy, line_info, regex, string
 from persil.parser import eof
-from persil.stream import SoftError, Stream, from_stream
+from persil.stream import Backtrack, Stream, from_stream
 from persil.utils import Span, line_info_at
 
 # ==============================================================================
@@ -226,7 +226,7 @@ def skip_blank_lines(stream: Stream[str]) -> None:
     try:
         while True:
             stream.apply(blank_line)
-    except SoftError:
+    except Backtrack:
         pass
 
 
@@ -235,7 +235,7 @@ def at_eof(stream: Stream[str]) -> bool:
     try:
         stream.apply(eof())
         return True
-    except SoftError:
+    except Backtrack:
         return False
 
 
@@ -277,7 +277,7 @@ def parse_inline_value(stream: Stream[str]) -> YamlValue:
     """Parse a value that appears on the same line (after `: ` or `- `)."""
     try:
         return stream.apply(_delimited_inline)
-    except SoftError:
+    except Backtrack:
         pass
     # Plain scalar: grab the whole text, then try to parse as a typed value.
     text = stream.apply(plain_scalar_re)
@@ -394,7 +394,7 @@ def parse_block_sequence(stream: Stream[str], expected_indent: int) -> list[Yaml
         # Try to consume at least one space after `-`.
         try:
             stream.apply(regex(r"[ \t]+"))
-        except SoftError:
+        except Backtrack:
             # `-` followed immediately by newline → nested block value.
             stream.apply(line_end)
             value = parse_value(stream, expected_indent)
@@ -408,7 +408,7 @@ def parse_block_sequence(stream: Stream[str], expected_indent: int) -> list[Yaml
             value = parse_value(stream, expected_indent)
             items.append(value)
             continue
-        except SoftError:
+        except Backtrack:
             stream.index = saved
 
         # Content on the same line after `- `.
@@ -467,7 +467,7 @@ def parse_block_mapping(
             value = parse_value(stream, expected_indent)
             val_stop = line_info_at(stream.inner, stream.index)
             val_span = Span(start=val_start, stop=val_stop, value=value)
-        except SoftError:
+        except Backtrack:
             stream.index = saved
             # Value is inline on the same line.
             value = parse_inline_value(stream)
@@ -502,7 +502,7 @@ def yaml_stream(stream: Stream[str]) -> YamlStream:
         try:
             stream.apply(doc_start)
             skip_blank_lines(stream)
-        except SoftError:
+        except Backtrack:
             pass
 
         if at_eof(stream):
@@ -516,7 +516,7 @@ def yaml_stream(stream: Stream[str]) -> YamlStream:
         skip_blank_lines(stream)
         try:
             stream.apply(doc_end)
-        except SoftError:
+        except Backtrack:
             pass
 
     return YamlStream(documents=documents)

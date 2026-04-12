@@ -18,7 +18,7 @@ from rich import print as rprint
 
 from persil import Parser, lazy, regex, string
 from persil.parser import eof
-from persil.stream import SoftError, Stream, from_stream
+from persil.stream import Backtrack, Stream, from_stream
 from persil.utils import Span
 
 # ==============================================================================
@@ -241,14 +241,14 @@ def toml_document(stream: Stream[str]) -> TomlDocument:
         try:
             while True:
                 stream.apply(blank_line)
-        except SoftError:
+        except Backtrack:
             pass
 
         # Check for end of input.
         try:
             stream.apply(eof())
             break
-        except SoftError:
+        except Backtrack:
             pass
 
         # Parse the next entry (header or key-value pair).
