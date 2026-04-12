@@ -24,9 +24,9 @@ class Ok[T]:
     def ok(self) -> Ok[T]:
         """No-op: returns self.
 
-        Mirrors :meth:`Err.ok` so that :type:`Result` can be used
-        uniformly — calling ``.ok()`` on success is a no-op, while
-        calling it on failure raises :class:`ParseError`.
+        Mirrors `Err.ok` so that `Result` can be used
+        uniformly — calling `.ok()` on success is a no-op, while
+        calling it on failure raises `ParseError`.
         """
         return self
 
@@ -46,8 +46,7 @@ class Ok[T]:
 class Err:
     """A parse error carrying structured location and expectation info.
 
-    This is a plain dataclass — it is never raised directly. Use
-    :class:`ParseError` to convert it into a raisable exception.
+    Use `Self.raise_error()` to raise it wrapped into a `ParseError`.
     """
 
     index: int
@@ -61,11 +60,10 @@ class Err:
         expected: str,
         stream: Sequence,
     ) -> Self:
-        """Build an :class:`Err` from a stream position.
+        """Build an `Err` from a stream position.
 
-        For ``str`` and ``bytes`` streams the location is computed as a
-        :class:`RowCol`; for other sequence types it falls back to the
-        raw integer index.
+        For `str` and `bytes` streams the location is computed as a `RowCol`;
+        for other sequence types it falls back to the raw integer index.
         """
         if isinstance(stream, (str, bytes)):
             location: RowCol | int = line_info_at(stream, index)
@@ -79,22 +77,25 @@ class Err:
             return f"expected {items[0]} at {self.location}"
         return f"expected one of {', '.join(items)} at {self.location}"
 
-    def ok(self) -> Never:
-        """Raise as a :class:`ParseError`."""
+    def raise_error(self) -> Never:
+        """Raise a `ParseError`."""
         raise ParseError(self)
 
+    def ok(self) -> Never:
+        """Raise as a `ParseError`."""
+        self.raise_error()
+
     def map(self, map_function: Callable) -> Self:
-        """No-op: errors propagate unchanged through ``map``."""
+        """No-op: errors propagate unchanged through `map`."""
         return self
 
     def aggregate[T](self, other: Result[T]) -> Result[T]:
         """Merge two errors, keeping the one furthest into the stream.
 
-        If *other* is :class:`Ok`, it wins unconditionally.  When both
-        are :class:`Err`, the error at the higher index is kept.  If the
-        indices are equal, expectations from both branches are merged so
-        the message lists every alternative that was tried at that
-        position.
+        If *other* is `Ok`, it wins unconditionally. When both are `Err`,
+        the error at the higher index is kept. If the indices are equal,
+        expectations from both branches are merged so the message lists
+        every alternative that was tried at that position.
         """
         if isinstance(other, Ok):
             return other
@@ -118,8 +119,8 @@ class Err:
 class ParseError(Exception):
     """Raised when parsing fails.
 
-    Wraps an :class:`Err` so that structured error data is available
-    via the :attr:`err` attribute, while still being a proper exception.
+    Wraps an `Err` so that structured error data is available
+    via the `err` attribute, while still being a proper exception.
     """
 
     def __init__(self, err: Err) -> None:
@@ -143,4 +144,4 @@ class ParseError(Exception):
 
 
 type Result[T] = Ok[T] | Err
-"""The result of applying a parser: either :class:`Ok` or :class:`Err`."""
+"""The result of applying a parser: either `Ok` or `Err`."""
