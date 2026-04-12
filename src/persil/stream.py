@@ -12,8 +12,8 @@ class Backtrack(Exception):
     to convert the failure back into a returned `Err`, allowing combinators
     like `|` to try alternatives.
 
-    Contrast with `ParseError`, which represents a *committed* failure
-    (e.g. after `Parser.cut`) and is never caught by `_from_stream`.
+    By contrast, `ParseError` represents a *committed* failure (e.g. after `Parser.cut`)
+    and is never caught by `_from_stream`.
     """
 
     def __init__(self, inner: Err) -> None:
@@ -22,10 +22,10 @@ class Backtrack(Exception):
 
 
 class Stream[In: Sequence]:
-    """
-    The `Stream` API lets you apply parsers iteratively, and handles
-    the index bookeeping for you. Its design goal is to be used with
-    the `from_stream` decorator.
+    """Wrapper around the input to allow applying parsers sequentially while
+    maintaining the necessary bookeeping.
+
+    See `from_stream` for more information.
     """
 
     def __init__(self, inner: In, index: int = 0):
@@ -91,12 +91,12 @@ def from_stream[In: Sequence, Out](
         Parser[In, Out],
     ]
 ):
-    """Create a parser from a function that operates on a :class:`Stream`.
+    r"""Create a parser from a function that operates on a `Stream`.
 
     Can be used as a bare decorator, a decorator with a description, or
     called directly with a function and an optional description.
 
-    Examples::
+    Examples:
 
         @from_stream
         def my_parser(stream: Stream[str]) -> int: ...
@@ -105,6 +105,15 @@ def from_stream[In: Sequence, Out](
         def my_parser(stream: Stream[str]) -> int: ...
 
         parser = from_stream(my_func, desc="my parser")
+
+        @from_stream
+        def datetime_parser(stream: Stream[str]) -> datetime:
+            year = stream.apply(regex(r"\d{4}").map(int))
+            stream.apply(string("/"))
+            month = stream.apply(regex(r"\d{2}").map(int))
+            stream.apply(string("/"))
+            day = stream.apply(regex(r"\d{2}").map(int))
+            return datetime(year, month, day)
     """
 
     def _wrap(f: Callable[[Stream[In]], Out]) -> Parser[In, Out]:

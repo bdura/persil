@@ -50,7 +50,7 @@ A motivating example:
 ```python
 import datetime
 
-from persil import from_stream, regex
+from persil import from_stream, regex, string, Stream
 
 year = regex("[0-9]{4}").map(int)
 month = regex("(0[0-9]|1[0-2])").map(int)
@@ -58,18 +58,22 @@ day = regex("([012][0-9]|3[01])").map(int)
 
 dash = string("-")
 
+
 @from_stream
-def date() -> datetime.date:
+def date(stream: Stream[str]) -> datetime.date:
     """
     Parse a date in the format YYYY-MM-DD
     """
-    y = stream(year)
-    stream(dash)
-    m = stream(month)
-    stream(dash)
-    d = stream(day)
+    y = stream.apply(year)
+    stream.apply(dash)
+    m = stream.apply(month)
+    stream.apply(dash)
+    d = stream.apply(day)
 
     return datetime.date(y, m, d)
+
+
+assert date.parse("1789-07-14") == datetime.date(year=1789, month=7, day=15)
 ```
 
 ### Lazy definition
