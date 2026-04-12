@@ -7,7 +7,7 @@ from hypothesis import strategies as st
 from persil import regex, string
 from persil.stream import Stream, from_stream
 
-from persil.result import Err
+from persil.result import ParseError
 
 year_parser = regex(r"\d{4}").map(int)
 month_parser = regex(r"(?:0\d|1[012])").map(int)
@@ -42,7 +42,7 @@ def test_from_stream_failure_path():
     def must_see_hello(stream: Stream[str]) -> str:
         return stream.apply(string("hello"))
 
-    with pytest.raises(Err):
+    with pytest.raises(ParseError):
         must_see_hello.parse("goodbye")
 
 
@@ -53,8 +53,23 @@ def test_from_stream_with_desc():
 
     assert must_see_hello.parse("hello") == "hello"
 
-    with pytest.raises(Err, match="greeting"):
+    with pytest.raises(ParseError, match="greeting"):
         must_see_hello.parse("goodbye")
+
+
+def test_from_stream_cut_propagates():
+    """A cut() failure inside a from_stream function must propagate as
+    ParseError, not be swallowed as a Backtrack."""
+
+    @from_stream
+    def cut_parser(stream: Stream[str]) -> str:
+        return stream.apply(string("a").cut())
+
+    # The cut makes the error non-backtrackable, so even behind an
+    # alternative the ParseError should propagate.
+    parser = cut_parser | string("b")
+    with pytest.raises(ParseError):
+        parser.parse("x")
 
 
 @given(text=st.from_regex(r"[a-z]+", fullmatch=True))

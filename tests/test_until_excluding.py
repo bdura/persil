@@ -2,14 +2,14 @@ import pytest
 from hypothesis import given, strategies as st
 
 from persil import regex, string
-from persil.result import Err
+from persil.result import ParseError
 
 any_char = regex(r"[\s\S]")
 
 
 def test_until_excluding_max_exceeded():
     parser = any_char.until_excluding(string("|"), max=2)
-    with pytest.raises(Err, match="at most"):
+    with pytest.raises(ParseError, match="at most"):
         parser.parse_partial("abcd|")
 
 
@@ -18,7 +18,7 @@ def test_until_excluding_min_not_met_inner_fails():
     # `other` matches.
     digit = regex(r"\d")
     parser = digit.until_excluding(string("|"), min=3)
-    with pytest.raises(Err, match="at least"):
+    with pytest.raises(ParseError, match="at least"):
         parser.parse_partial("12x|")
 
 
@@ -27,7 +27,7 @@ def test_until_excluding_other_not_found():
     # "did not find other parser" branch.
     digit = regex(r"\d")
     parser = digit.until_excluding(string("|"), min=0)
-    with pytest.raises(Err):
+    with pytest.raises(ParseError):
         parser.parse_partial("12x")
 
 
@@ -49,7 +49,7 @@ def test_until_excluding_max_property(content: str, max_items: int):
         # Separator must still be in the remainder.
         assert remainder.startswith("|")
     else:
-        with pytest.raises(Err):
+        with pytest.raises(ParseError):
             parser.parse_partial(content + "|")
 
 
@@ -69,5 +69,5 @@ def test_until_excluding_min_property(content: str, min_items: int):
         assert result == list(content)
         assert remainder.startswith("|")
     else:
-        with pytest.raises(Err):
+        with pytest.raises(ParseError):
             parser.parse_partial(content + "|")

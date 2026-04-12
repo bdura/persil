@@ -4,7 +4,7 @@ import pytest
 from hypothesis import given, strategies as st
 
 from persil import from_enum
-from persil.result import Err
+from persil.result import ParseError
 
 
 class Defcon(enum.Enum):
@@ -39,7 +39,7 @@ def test_from_enum_empty_does_not_crash():
     # Constructing a parser from an empty enum must not raise IndexError.
     # Parsing any input should raise a parse error, not a Python exception.
     empty_parser = from_enum(EmptyEnum)
-    with pytest.raises(Err):
+    with pytest.raises(ParseError):
         empty_parser.parse("anything")
 
 

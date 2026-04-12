@@ -4,7 +4,7 @@ import pytest
 from hypothesis import given, strategies as st
 
 from persil import regex
-from persil.result import Err
+from persil.result import ParseError
 from persil.parsers.regex import regex_groupdict
 
 
@@ -30,7 +30,7 @@ def test_regex_precompiled_str_pattern():
 
 
 def test_regex_no_match_raises():
-    with pytest.raises(Err):
+    with pytest.raises(ParseError):
         regex(r"\d+").parse("abc")
 
 
@@ -64,5 +64,5 @@ def test_regex_groupdict_success():
 
 def test_regex_groupdict_failure():
     parser = regex_groupdict(r"(?P<year>\d{4})-(?P<month>\d{2})")
-    with pytest.raises(Err):
+    with pytest.raises(ParseError):
         parser.parse("not-a-date")

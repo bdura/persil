@@ -3,7 +3,7 @@ from hypothesis import assume, given, strategies as st
 
 from persil import regex, string
 from persil.parser import eof
-from persil.result import Err
+from persil.result import Err, ParseError
 
 
 any_char = regex(r"[\s\S]")
@@ -16,7 +16,7 @@ def test_cut_success():
 
 def test_cut_raises_on_failure():
     parser = string("a").cut()
-    with pytest.raises(Err):
+    with pytest.raises(ParseError):
         parser.parse("b")
 
 
@@ -29,13 +29,13 @@ def test_cut_is_transparent_on_success(text: str):
 
 def test_skip_second_fails():
     parser = string("a").skip(string("b"))
-    with pytest.raises(Err):
+    with pytest.raises(ParseError):
         parser.parse("ac")
 
 
 def test_combine_second_fails():
     parser = string("a").combine(string("b"))
-    with pytest.raises(Err):
+    with pytest.raises(ParseError):
         parser.parse("ac")
 
 
@@ -99,7 +99,7 @@ def test_sep_by_max_zero():
 
 def test_should_fail_when_inner_succeeds():
     parser = string("a").should_fail("not 'a'")
-    with pytest.raises(Err):
+    with pytest.raises(ParseError):
         parser.parse("a")
 
 
@@ -125,13 +125,13 @@ def test_should_fail_inverts_success(text: str):
 
 def test_span_failure():
     parser = string("a").span()
-    with pytest.raises(Err):
+    with pytest.raises(ParseError):
         parser.parse("b")
 
 
 def test_add_second_fails():
     parser = string("a").times(1) + string("b").times(1)
-    with pytest.raises(Err):
+    with pytest.raises(ParseError):
         parser.parse("ac")
 
 
@@ -148,7 +148,7 @@ def test_add_concatenates_lists(n: int, m: int):
 
 
 def test_eof_not_at_end():
-    with pytest.raises(Err):
+    with pytest.raises(ParseError):
         eof().parse_partial("leftover")
 
 
@@ -180,6 +180,6 @@ def test_sep_by_result_length(count: int, min_val: int, max_val: int):
     try:
         result, _ = parser.parse_partial(text)
         assert min_val <= len(result) <= max_val
-    except Err:
+    except ParseError:
         # Expected when count < min_val.
         assert count < min_val

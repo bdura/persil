@@ -4,7 +4,7 @@ from typing import Any, Callable, Sequence, cast, overload, Literal
 
 from persil.utils import Span, line_info_at
 
-from .result import Err, Ok, Result
+from .result import Err, Ok, ParseError, Result
 
 type Wrapped[In: Sequence, Out] = Callable[[In, int], Result[Out]]
 
@@ -42,7 +42,7 @@ class Parser[In: Sequence, Out]:
         @Parser
         def cut_parser(stream: In, index: int) -> Result[Out]:
             result = self(stream, index)
-            return result.ok_or_raise()
+            return result.ok()
 
         return cut_parser
 
@@ -182,7 +182,7 @@ class Parser[In: Sequence, Out]:
         result = self(stream, 0)
 
         if isinstance(result, Err):
-            raise result
+            raise ParseError(result)
 
         value = result.value
         remainder = cast(In, stream[result.index :])

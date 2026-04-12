@@ -2,10 +2,20 @@ from functools import wraps
 from typing import Callable, Sequence, overload
 
 from .parser import Parser
-from .result import Err, Ok, Result
+from .result import Err, Ok, ParseError, Result
 
 
-class SoftError(Exception):
+class Backtrack(Exception):
+    """Control-flow signal raised by `Stream.apply` when a parser returns `Err`.
+
+    This is *not* a user-facing error. It is caught internally by `_from_stream`
+    to convert the failure back into a returned `Err`, allowing combinators
+    like `|` to try alternatives.
+
+    Contrast with `ParseError`, which represents a *committed* failure
+    (e.g. after `Parser.cut`) and is never caught by `_from_stream`.
+    """
+
     def __init__(self, inner: Err) -> None:
         self.inner = inner
         super().__init__()
@@ -26,7 +36,7 @@ class Stream[In: Sequence]:
         res = parser(self.inner, self.index)
 
         if isinstance(res, Err):
-            raise SoftError(res)
+            raise Backtrack(res)
 
         self.index = res.index
 
@@ -42,8 +52,12 @@ def _from_stream[In: Sequence, Out](
         st = Stream(inner=stream, index=index)
         try:
             out = func(st)
-        except SoftError as e:
+        except Backtrack as e:
             return e.inner
+        except ParseError:
+            # NOTE: A cut() inside the stream function raises ParseError;
+            # re-raise so it propagates past the caller.
+            raise
         return Ok(out, st.index)
 
     return fn
