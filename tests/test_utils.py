@@ -1,7 +1,7 @@
 import pytest
 from hypothesis import assume, given, strategies as st
 
-from persil.utils import RowCol, line_info, line_info_at
+from persil.utils import RowCol, line_info_at
 
 
 def test_line_info_at_bytes():
@@ -13,11 +13,6 @@ def test_line_info_at_bytes():
 def test_line_info_at_unsupported_type():
     with pytest.raises(TypeError):
         line_info_at([1, 2, 3], 1)
-
-
-def test_line_info_non_string_sequence():
-    # For non-str/bytes sequences, line_info falls back to str(index).
-    assert line_info([1, 2, 3], 2) == "2"
 
 
 @given(

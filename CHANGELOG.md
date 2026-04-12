@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning].
 - `RowCol.index` field
 - `Parser.alt` takes the responsibility for `Parser.__or__`,
   which becomes a simple proxy
+- `ParseError` exception class, now the only exception raised to
+  user code on parse failure. It exposes structured `.err`, `.index`,
+  `.expected`, and `.location` attributes.
 
 ### Fixed
 
@@ -22,6 +25,9 @@ and this project adheres to [Semantic Versioning].
 - `Parser.skip` (`<<`) was returning the wrong index
 - `many` parser no longer relies on a magic upper-bound value
 - Better `eof`, `index` and `line_info` typing
+- `Err.aggregate` no longer merges expectations across different
+  stream positions — only the furthest error's expectations are kept,
+  producing cleaner error messages
 
 ### Changed
 
@@ -31,9 +37,20 @@ and this project adheres to [Semantic Versioning].
 - **Breaking:** `transform` parameter in `tag`, `string`, and
   `from_enum` defaults to `None` instead of `noop`; `tag` skips the
   transform call entirely when none is provided
+- **Breaking:** `Err` is now a plain dataclass, no longer an
+  `Exception`. Code that caught `Err` directly should catch
+  `ParseError` instead.
+- **Breaking:** `Err.expected` is now a `frozenset[str]` instead of
+  `list[str]`, deduplicating alternatives automatically
+- **Breaking:** `Err.location` is now `RowCol | int` instead of a
+  pre-formatted string, making errors machine-readable
+- **Breaking:** `Ok.ok_or_raise` / `Err.ok_or_raise` renamed to
+  `Ok.ok` / `Err.ok`
 - `Parser.until` gets a `return_other` parameter
 - Rename `Parser.until_discard` to `Parser.until_excluding`
+- Rename internal `SoftError` to `Backtrack` for clarity
 - Simplify `regex` parser, removing type-unsafe groups
+- All error construction sites now use `Err.from_stream`
 
 ### Removed
 

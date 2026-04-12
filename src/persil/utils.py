@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from functools import singledispatch
-from typing import Sequence
 
 
 @dataclass
@@ -23,7 +22,7 @@ class Span[T]:
 
 
 @singledispatch
-def line_info_at(stream: Sequence, index: int) -> RowCol:
+def line_info_at(stream: str | bytes, index: int) -> RowCol:
     raise TypeError
 
 
@@ -41,10 +40,3 @@ def _(stream: str, index: int) -> RowCol:
     last_nl = stream.rfind("\n", 0, index)
     col = index - (last_nl + 1)
     return RowCol(index, row, col)
-
-
-def line_info(stream: Sequence, index: int) -> str:
-    if isinstance(stream, (str, bytes)):
-        return str(line_info_at(stream, index))
-    else:
-        return str(index)

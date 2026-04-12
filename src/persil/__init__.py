@@ -10,10 +10,12 @@ from .parsers import (
     tag,
     whitespace,
 )
+from .result import ParseError
 from .lazy import lazy
 from .stream import Stream, from_stream
 
 __all__ = [
+    "ParseError",
     "Parser",
     "Stream",
     "fail",

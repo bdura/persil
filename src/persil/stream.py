@@ -2,20 +2,30 @@ from functools import wraps
 from typing import Callable, Sequence, overload
 
 from .parser import Parser
-from .result import Err, Ok, Result
+from .result import Err, Ok, ParseError, Result
 
 
-class SoftError(Exception):
+class Backtrack(Exception):
+    """Control-flow signal raised by `Stream.apply` when a parser returns `Err`.
+
+    This is *not* a user-facing error. It is caught internally by `_from_stream`
+    to convert the failure back into a returned `Err`, allowing combinators
+    like `|` to try alternatives.
+
+    By contrast, `ParseError` represents a *committed* failure (e.g. after `Parser.cut`)
+    and is never caught by `_from_stream`.
+    """
+
     def __init__(self, inner: Err) -> None:
         self.inner = inner
         super().__init__()
 
 
 class Stream[In: Sequence]:
-    """
-    The `Stream` API lets you apply parsers iteratively, and handles
-    the index bookeeping for you. Its design goal is to be used with
-    the `from_stream` decorator.
+    """Wrapper around the input to allow applying parsers sequentially while
+    maintaining the necessary bookeeping.
+
+    See `from_stream` for more information.
     """
 
     def __init__(self, inner: In, index: int = 0):
@@ -26,7 +36,7 @@ class Stream[In: Sequence]:
         res = parser(self.inner, self.index)
 
         if isinstance(res, Err):
-            raise SoftError(res)
+            raise Backtrack(res)
 
         self.index = res.index
 
@@ -42,8 +52,12 @@ def _from_stream[In: Sequence, Out](
         st = Stream(inner=stream, index=index)
         try:
             out = func(st)
-        except SoftError as e:
+        except Backtrack as e:
             return e.inner
+        except ParseError:
+            # NOTE: A cut() inside the stream function raises ParseError;
+            # re-raise so it propagates past the caller.
+            raise
         return Ok(out, st.index)
 
     return fn
@@ -77,12 +91,12 @@ def from_stream[In: Sequence, Out](
         Parser[In, Out],
     ]
 ):
-    """Create a parser from a function that operates on a :class:`Stream`.
+    r"""Create a parser from a function that operates on a `Stream`.
 
     Can be used as a bare decorator, a decorator with a description, or
     called directly with a function and an optional description.
 
-    Examples::
+    Examples:
 
         @from_stream
         def my_parser(stream: Stream[str]) -> int: ...
@@ -91,6 +105,15 @@ def from_stream[In: Sequence, Out](
         def my_parser(stream: Stream[str]) -> int: ...
 
         parser = from_stream(my_func, desc="my parser")
+
+        @from_stream
+        def datetime_parser(stream: Stream[str]) -> datetime:
+            year = stream.apply(regex(r"\d{4}").map(int))
+            stream.apply(string("/"))
+            month = stream.apply(regex(r"\d{2}").map(int))
+            stream.apply(string("/"))
+            day = stream.apply(regex(r"\d{2}").map(int))
+            return datetime(year, month, day)
     """
 
     def _wrap(f: Callable[[Stream[In]], Out]) -> Parser[In, Out]:

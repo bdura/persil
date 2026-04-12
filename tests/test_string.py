@@ -1,7 +1,7 @@
 import pytest
 
 from persil import tag
-from persil.result import Err
+from persil.result import ParseError
 
 parser = tag("TeSt", transform=lambda s: s.lower())
 
@@ -18,7 +18,7 @@ def test_string_parser(message: str):
 
 
 def test_transformed_tag_no_match():
-    with pytest.raises(Err):
+    with pytest.raises(ParseError):
         parser.parse("nope")
 
 

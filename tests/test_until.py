@@ -2,7 +2,7 @@ import pytest
 from hypothesis import given, strategies as st
 
 from persil import regex, string
-from persil.result import Err
+from persil.result import ParseError
 
 # Matches any single character, including newlines.
 any_char = regex(r"[\s\S]")
@@ -51,7 +51,7 @@ def test_until_min_satisfied():
 
 def test_until_min_violated():
     # `other` matches after only 1 item, but min=2.
-    with pytest.raises(Err):
+    with pytest.raises(ParseError):
         any_char.until(string("|"), min=2).parse("a|")
 
 
@@ -62,7 +62,7 @@ def test_until_max_satisfied():
 
 def test_until_max_violated():
     # 4 items appear before `other`, but max=3.
-    with pytest.raises(Err):
+    with pytest.raises(ParseError):
         any_char.until(string("|"), max=3).parse("abcd|")
 
 
@@ -73,7 +73,7 @@ def test_until_max_zero():
 
 
 def test_until_max_zero_violated():
-    with pytest.raises(Err):
+    with pytest.raises(ParseError):
         any_char.until(string("|"), max=0).parse("a|")
 
 
@@ -110,7 +110,7 @@ def test_until_max_property(content: str, max_items: int):
         chars = parser.parse(content + "|")
         assert chars == list(content)
     else:
-        with pytest.raises(Err):
+        with pytest.raises(ParseError):
             parser.parse(content + "|")
 
 
@@ -129,5 +129,5 @@ def test_until_min_property(content: str, min_items: int):
         chars = parser.parse(content + "|")
         assert chars == list(content)
     else:
-        with pytest.raises(Err):
+        with pytest.raises(ParseError):
             parser.parse(content + "|")

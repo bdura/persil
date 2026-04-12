@@ -1,54 +1,74 @@
 import pytest
 from hypothesis import given, strategies as st
 
-from persil.result import Err, Ok
+from persil.result import Err, Ok, ParseError
+from persil.utils import RowCol
 
 
-def test_ok_or_raise_returns_self():
+def test_ok_returns_self():
     ok = Ok(42, 0)
-    assert ok.ok_or_raise() is ok
+    assert ok.ok() is ok
 
 
-def test_err_ok_or_raise_raises():
-    err = Err(0, ["thing"], "0:0")
-    with pytest.raises(Err):
-        err.ok_or_raise()
+def test_err_ok_raises_parse_error():
+    err = Err(0, frozenset({"thing"}), RowCol(0, 0, 0))
+    with pytest.raises(ParseError):
+        err.ok()
 
 
 def test_err_str_single_expected():
-    err = Err(0, ["integer"], "0:0")
+    err = Err(0, frozenset({"integer"}), RowCol(0, 0, 0))
     assert str(err) == "expected integer at 0:0"
 
 
 def test_err_str_multiple_expected():
-    err = Err(0, ["integer", "string"], "0:0")
+    err = Err(0, frozenset({"integer", "string"}), RowCol(0, 0, 0))
     assert str(err) == "expected one of integer, string at 0:0"
 
 
 def test_err_map_is_noop():
-    err = Err(0, ["thing"], "0:0")
+    err = Err(0, frozenset({"thing"}), RowCol(0, 0, 0))
     assert err.map(lambda x: x + 1) is err
 
 
 def test_err_aggregate_keeps_further_error():
-    # `other` is further into the stream than `self`, so `other`'s
-    # location should be used.
-    earlier = Err(5, ["a"], "0:5")
-    further = Err(3, ["b"], "0:3")
-    result = further.aggregate(earlier)
+    # `other` is further into the stream than `self`, so `other` wins entirely.
+    earlier = Err(3, frozenset({"b"}), RowCol(3, 0, 3))
+    further = Err(5, frozenset({"a"}), RowCol(5, 0, 5))
+    result = earlier.aggregate(further)
 
     assert isinstance(result, Err)
     assert result.index == 5
-    assert result.location == "0:5"
-    assert set(result.expected) == {"a", "b"}
+    assert result.location == RowCol(5, 0, 5)
+    # Only the furthest error's expectations are kept.
+    assert result.expected == frozenset({"a"})
+
+
+def test_err_aggregate_merges_at_same_index():
+    err_a = Err(5, frozenset({"a"}), RowCol(5, 0, 5))
+    err_b = Err(5, frozenset({"b"}), RowCol(5, 0, 5))
+    result = err_a.aggregate(err_b)
+
+    assert isinstance(result, Err)
+    assert result.index == 5
+    assert result.expected == frozenset({"a", "b"})
 
 
 def test_err_aggregate_with_ok_returns_ok():
-    err = Err(0, ["a"], "0:0")
+    err = Err(0, frozenset({"a"}), RowCol(0, 0, 0))
     ok = Ok(42, 5)
     result = err.aggregate(ok)
     assert isinstance(result, Ok)
     assert result.value == 42
+
+
+def test_parse_error_exposes_err_attributes():
+    err = Err(3, frozenset({"x"}), RowCol(3, 1, 0))
+    exc = ParseError(err)
+    assert exc.index == 3
+    assert exc.expected == frozenset({"x"})
+    assert exc.location == RowCol(3, 1, 0)
+    assert "expected x at 1:0" in str(exc)
 
 
 @given(
@@ -79,16 +99,28 @@ def test_ok_map_composition(value: int, index: int):
     assert left.index == right.index
 
 
+def test_err_from_stream_non_text_sequence():
+    """For non-str/bytes sequences, location falls back to the raw index."""
+    err = Err.from_stream(2, "thing", [1, 2, 3])
+    assert err.location == 2
+    assert err.expected == frozenset({"thing"})
+
+
 @given(
     idx_a=st.integers(min_value=0, max_value=1000),
     idx_b=st.integers(min_value=0, max_value=1000),
 )
 def test_aggregate_keeps_furthest_index(idx_a: int, idx_b: int):
     """aggregate always picks the error furthest into the stream."""
-    err_a = Err(idx_a, ["a"], f"0:{idx_a}")
-    err_b = Err(idx_b, ["b"], f"0:{idx_b}")
+    err_a = Err(idx_a, frozenset({"a"}), idx_a)
+    err_b = Err(idx_b, frozenset({"b"}), idx_b)
     result = err_a.aggregate(err_b)
 
     assert isinstance(result, Err)
     assert result.index == max(idx_a, idx_b)
-    assert set(result.expected) == {"a", "b"}
+    if idx_a == idx_b:
+        assert result.expected == frozenset({"a", "b"})
+    elif idx_a > idx_b:
+        assert result.expected == frozenset({"a"})
+    else:
+        assert result.expected == frozenset({"b"})

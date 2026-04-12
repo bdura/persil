@@ -23,7 +23,7 @@ def line_info[In: (str, bytes)]() -> Parser[In, int]:
     """
 
     @Parser
-    def _line_info(stream: Sequence, index: int) -> Result[RowCol]:
+    def _line_info(stream: str | bytes, index: int) -> Result[RowCol]:
         return Ok(line_info_at(stream, index), index)
 
     return cast(Parser[In, int], _line_info)

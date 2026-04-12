@@ -2,7 +2,6 @@ from typing import Any, Callable
 
 from persil import Parser
 from persil.result import Err, Ok, Result
-from persil.utils import line_info
 
 
 def tag[T: (str, bytes)](
@@ -34,7 +33,7 @@ def tag[T: (str, bytes)](
             matched = stream[index : index + slen]  # ty:ignore[invalid-argument-type]
             if transform(matched) == transformed_s:
                 return Ok(matched, index + slen)
-            return Err(index, [str(expected)], line_info(stream, index))
+            return Err.from_stream(index, str(expected), stream)
 
         return transformed_tag_parser
 
@@ -43,6 +42,6 @@ def tag[T: (str, bytes)](
         matched = stream[index : index + slen]  # ty:ignore[invalid-argument-type]
         if matched == expected:
             return Ok(matched, index + slen)
-        return Err(index, [str(expected)], line_info(stream, index))
+        return Err.from_stream(index, str(expected), stream)
 
     return tag_parser

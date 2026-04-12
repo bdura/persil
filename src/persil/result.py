@@ -1,23 +1,41 @@
 from __future__ import annotations
-from persil.utils import line_info
 
 from dataclasses import dataclass
 from typing import Callable, Never, Self, Sequence
 
+from persil.utils import RowCol, line_info_at
+
 
 @dataclass
 class Ok[T]:
+    """A successful parse result.
+
+    Attributes
+    ----------
+    value
+        The value produced by the parser.
+    index
+        The stream position immediately after the consumed input.
+    """
+
     value: T
     index: int
 
-    def ok_or_raise(self) -> Ok[T]:
-        """No-op function."""
+    def ok(self) -> Ok[T]:
+        """No-op: returns self.
+
+        Mirrors `Err.ok` so that `Result` can be used
+        uniformly — calling `.ok()` on success is a no-op, while
+        calling it on failure raises `ParseError`.
+        """
         return self
 
     def map[Out](self, map_function: Callable[[T], Out]) -> Ok[Out]:
+        """Apply *map_function* to the value, preserving the index."""
         return Ok(value=map_function(self.value), index=self.index)
 
     def with_index(self, index: int) -> Ok[T]:
+        """Return a copy with a different stream index."""
         return Ok(
             value=self.value,
             index=index,
@@ -25,44 +43,105 @@ class Ok[T]:
 
 
 @dataclass
-class Err(Exception):
+class Err:
+    """A parse error carrying structured location and expectation info.
+
+    Use `Self.raise_error()` to raise it wrapped into a `ParseError`.
+    """
+
     index: int
-    expected: list[str]
-    location: str
+    expected: frozenset[str]
+    location: RowCol | int
 
     @classmethod
-    def from_stream[T: Sequence](
+    def from_stream(
         cls,
         index: int,
         expected: str,
-        stream: T,
+        stream: Sequence,
     ) -> Self:
-        location = line_info(stream, index)
-        return cls(index, [expected], location)
+        """Build an `Err` from a stream position.
+
+        For `str` and `bytes` streams the location is computed as a `RowCol`;
+        for other sequence types it falls back to the raw integer index.
+        """
+        if isinstance(stream, (str, bytes)):
+            location: RowCol | int = line_info_at(stream, index)
+        else:
+            location = index
+        return cls(index, frozenset({expected}), location)
 
     def __str__(self) -> str:
-        if len(self.expected) == 1:
-            return f"expected {self.expected[0]} at {self.location}"
-        else:
-            return f"expected one of {', '.join(self.expected)} at {self.location}"
+        items = sorted(self.expected)
+        if len(items) == 1:
+            return f"expected {items[0]} at {self.location}"
+        return f"expected one of {', '.join(items)} at {self.location}"
 
-    def ok_or_raise(self) -> Never:
-        """Raise the error directly"""
-        raise self
+    def raise_error(self) -> Never:
+        """Raise a `ParseError`."""
+        raise ParseError(self)
+
+    def ok(self) -> Never:
+        """Raise as a `ParseError`."""
+        self.raise_error()
 
     def map(self, map_function: Callable) -> Self:
+        """No-op: errors propagate unchanged through `map`."""
         return self
 
     def aggregate[T](self, other: Result[T]) -> Result[T]:
+        """Merge two errors, keeping the one furthest into the stream.
+
+        If *other* is `Ok`, it wins unconditionally. When both are `Err`,
+        the error at the higher index is kept. If the indices are equal,
+        expectations from both branches are merged so the message lists
+        every alternative that was tried at that position.
+        """
         if isinstance(other, Ok):
             return other
 
-        # Keep the error that is furthest into the stream; its location string
-        # already corresponds to that index.
-        if self.index >= other.index:
-            return Err(self.index, self.expected + other.expected, self.location)
-        else:
-            return Err(other.index, self.expected + other.expected, other.location)
+        # Keep only the error that is furthest into the stream.
+        # Expectations from an earlier index are irrelevant — they
+        # describe what was expected at a position already parsed past.
+        if self.index > other.index:
+            return self
+        if self.index < other.index:
+            return other
+
+        # Same index: merge expectations from both branches.
+        return Err(
+            self.index,
+            self.expected | other.expected,
+            self.location,
+        )
+
+
+class ParseError(Exception):
+    """Raised when parsing fails.
+
+    Wraps an `Err` so that structured error data is available
+    via the `err` attribute, while still being a proper exception.
+    """
+
+    def __init__(self, err: Err) -> None:
+        self.err = err
+        super().__init__(str(err))
+
+    @property
+    def index(self) -> int:
+        """Stream index where the error occurred."""
+        return self.err.index
+
+    @property
+    def expected(self) -> frozenset[str]:
+        """Set of descriptions of what was expected at this position."""
+        return self.err.expected
+
+    @property
+    def location(self) -> RowCol | int:
+        """Structured location (row/col for text, raw index otherwise)."""
+        return self.err.location
 
 
 type Result[T] = Ok[T] | Err
+"""The result of applying a parser: either `Ok` or `Err`."""
