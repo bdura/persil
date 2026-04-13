@@ -11,11 +11,8 @@ Not supported: anchors/aliases (&/*), tags (!!), multi-line block scalars
 (|/>), complex keys (? key), merge keys (<<).
 """
 
-import sys
 from dataclasses import dataclass
 from typing import Any, Sequence, cast
-
-from rich import print as rprint
 
 from persil import Parser, lazy, line_info, regex, string
 from persil.parser import eof
@@ -541,14 +538,3 @@ def _unwrap(val: YamlValue) -> Any:
         val = cast(list[YamlValue], val)
         return [_unwrap(v) for v in val]
     return val
-
-
-if __name__ == "__main__":
-    text = sys.stdin.read()
-    result = yaml_stream.parse(text)
-    for i, doc in enumerate(result.documents):
-        if i > 0:
-            print("---")
-        rprint(doc)
-        print()
-        rprint(resolve(doc))

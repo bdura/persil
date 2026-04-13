@@ -1,0 +1,14 @@
+[project]
+name = "persil-ast"
+version = "0.1.0"
+description = "AST parsers (JSON, TOML, YAML) with source locations, built on persil."
+license = "MIT"
+requires-python = ">=3.12"
+dependencies = ["persil"]
+
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[tool.uv.sources]
+persil = { workspace = true }

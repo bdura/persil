@@ -2,6 +2,12 @@ version = 1
 revision = 3
 requires-python = ">=3.12"
 
+[manifest]
+members = [
+    "persil",
+    "persil-ast",
+]
+
 [[package]]
 name = "babel"
 version = "2.17.0"
@@ -560,6 +566,7 @@ lint = [
 ]
 test = [
     { name = "hypothesis" },
+    { name = "persil-ast" },
     { name = "pytest" },
     { name = "pytest-cov" },
 ]
@@ -579,9 +586,21 @@ lint = [
 ]
 test = [
     { name = "hypothesis", specifier = ">=6.148.3" },
+    { name = "persil-ast", editable = "packages/persil-ast" },
     { name = "pytest", specifier = ">=9.0.1" },
     { name = "pytest-cov", specifier = ">=7.0.0" },
 ]
+
+[[package]]
+name = "persil-ast"
+version = "0.1.0"
+source = { editable = "packages/persil-ast" }
+dependencies = [
+    { name = "persil" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "persil", editable = "." }]
 
 [[package]]
 name = "platformdirs"

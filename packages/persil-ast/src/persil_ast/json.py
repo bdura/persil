@@ -1,7 +1,10 @@
-import sys
-from typing import Sequence, cast
+"""JSON parser.
 
-from rich import print as rprint
+Parses JSON into plain Python values (dicts, lists, strings, numbers,
+booleans, and None).
+"""
+
+from typing import Sequence, cast
 
 from persil import regex, string
 from persil import Parser
@@ -93,9 +96,3 @@ json_value = cast(
 )
 
 json_doc = ws >> json_value
-
-
-if __name__ == "__main__":
-    text = sys.stdin.read()
-    result = json_doc.parse(text)
-    rprint(result)

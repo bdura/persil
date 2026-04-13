@@ -10,11 +10,8 @@ Not supported: multi-line strings, datetime types, unicode escapes beyond
 \\uXXXX, or the full TOML spec edge cases.
 """
 
-import sys
 from dataclasses import dataclass
 from typing import Any, Sequence
-
-from rich import print as rprint
 
 from persil import Parser, lazy, regex, string
 from persil.parser import eof
@@ -67,6 +64,7 @@ comment = regex(r"#[^\n]*")
 
 # A single newline, possibly preceded by inline whitespace and a comment.
 blank_line = ws >> comment.optional() >> regex(r"\n")
+blank_lines = blank_line.many()
 
 # Optional blank lines (used between array elements).
 skip_newlines = blank_line.many()
@@ -238,11 +236,7 @@ def toml_document(stream: Stream[str]) -> TomlDocument:
 
     while True:
         # Skip blank/comment-only lines.
-        try:
-            while True:
-                stream.apply(blank_line)
-        except Backtrack:
-            pass
+        stream.apply(blank_lines)
 
         # Check for end of input.
         try:
@@ -312,11 +306,3 @@ def resolve(doc: TomlDocument) -> dict[str, Any]:
             set_nested(target, entry.key.value, entry.value.value)
 
     return root
-
-
-if __name__ == "__main__":
-    text = sys.stdin.read()
-    doc = toml_document.parse(text)
-    rprint(doc)
-    print("---")
-    rprint(resolve(doc))
