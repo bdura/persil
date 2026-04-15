@@ -1,6 +1,14 @@
 """AST parsers (JSON, TOML, YAML) with source locations, built on persil."""
 
-from .json import JsonValue, json_doc, json_value
+from .json import (
+    JsonDocument,
+    JsonKeyValue,
+    JsonObject,
+    JsonValue,
+    json_doc,
+    json_value,
+    resolve as json_resolve,
+)
 from .toml import (
     TomlArrayTableHeader,
     TomlDocument,
@@ -22,8 +30,12 @@ from .yaml import (
 
 __all__ = [
     # JSON
+    "JsonDocument",
+    "JsonKeyValue",
+    "JsonObject",
     "JsonValue",
     "json_doc",
+    "json_resolve",
     "json_value",
     # TOML
     "TomlArrayTableHeader",
